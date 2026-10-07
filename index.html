@@ -915,8 +915,257 @@ html[data-theme=dark] .portfolio-card-media::before{opacity:.1;}
   .profile-avatar{top:200px;width:84px;height:84px;}
   .profile-main{padding:64px 12px 16px;}
 }
+
+
+/* ===== AESH v3.18: desktop profile restore + visual portfolio cards ===== */
+/* Desktop/tablet profile only: restore the original side-by-side composition.
+   Mobile rules below 760px are intentionally untouched. */
+@media (min-width:761px){
+  .profile-dialog{
+    width:min(980px,100%)!important;
+    max-height:min(900px,calc(100vh - 48px))!important;
+    overflow:auto!important;
+    border-radius:32px!important;
+  }
+  .profile-promo{
+    display:grid!important;
+    grid-template-columns:minmax(310px,37%) minmax(0,1fr)!important;
+    min-height:420px!important;
+    overflow:hidden!important;
+    border-radius:32px 32px 0 0!important;
+    padding:0!important;
+    background:var(--surface)!important;
+  }
+  .profile-photo{
+    position:relative!important;
+    min-height:420px!important;
+    height:auto!important;
+    aspect-ratio:auto!important;
+    border-radius:0!important;
+    background:linear-gradient(145deg,#0f172a,#111827)!important;
+    display:grid!important;
+    place-items:center!important;
+    overflow:hidden!important;
+    font-size:5.5rem!important;
+  }
+  .profile-photo::after{display:none!important;content:none!important;}
+  .profile-photo::before{
+    content:''!important;
+    position:absolute!important;
+    inset:0!important;
+    z-index:1!important;
+    pointer-events:none!important;
+    background:linear-gradient(180deg,rgba(2,6,23,.02) 55%,rgba(2,6,23,.38) 100%)!important;
+  }
+  .profile-photo img,.profile-cover-img{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    max-width:none!important;
+    object-fit:contain!important;
+    object-position:center!important;
+    background:linear-gradient(145deg,#0f172a,#111827)!important;
+    transform:none!important;
+    filter:none!important;
+  }
+  .profile-badge{
+    top:22px!important;
+    right:auto!important;
+    left:auto!important;
+    inset-inline-end:22px!important;
+    inset-inline-start:auto!important;
+    padding:7px 15px!important;
+  }
+  .profile-photo-mark{
+    right:20px!important;
+    left:20px!important;
+    bottom:20px!important;
+    width:auto!important;
+    z-index:2!important;
+    text-align:right!important;
+    color:#fff!important;
+    text-shadow:0 2px 12px rgba(2,6,23,.45)!important;
+  }
+  .profile-photo-mark strong{
+    display:inline-flex!important;
+    align-items:center!important;
+    min-height:30px!important;
+    padding:5px 11px!important;
+    border-radius:999px!important;
+    background:rgba(15,23,42,.66)!important;
+    border:1px solid rgba(255,255,255,.16)!important;
+    backdrop-filter:blur(8px)!important;
+    -webkit-backdrop-filter:blur(8px)!important;
+    font-size:.76rem!important;
+    font-weight:900!important;
+    white-space:nowrap!important;
+  }
+  .profile-avatar{display:none!important;}
+  .profile-main{
+    position:relative!important;
+    z-index:2!important;
+    width:auto!important;
+    margin:0!important;
+    min-height:0!important;
+    padding:44px 40px 36px!important;
+    border-radius:0!important;
+    background:var(--surface)!important;
+    border:0!important;
+    box-shadow:none!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    min-width:0!important;
+  }
+  .profile-kicker,.profile-name,.profile-bio{
+    width:auto!important;
+    max-width:100%!important;
+    margin-left:0!important;
+  }
+  .profile-kicker{margin-bottom:9px!important;font-size:.75rem!important;}
+  .profile-name{margin-bottom:10px!important;line-height:1.25!important;}
+  .profile-role{margin-bottom:17px!important;}
+  .profile-bio{overflow-wrap:anywhere!important;line-height:2!important;}
+  .profile-stats-grid{margin-top:22px!important;gap:9px!important;}
+  .profile-extra-section{padding:28px 34px 24px!important;border-top:1px solid var(--border)!important;}
+  .profile-chart-section{padding:26px 34px 32px!important;}
+  html[data-theme=dark] .profile-main{box-shadow:none!important;}
+}
+@media (min-width:761px) and (max-width:900px){
+  .profile-dialog{width:min(900px,100%)!important;}
+  .profile-promo{grid-template-columns:minmax(280px,35%) minmax(0,1fr)!important;min-height:390px!important;}
+  .profile-photo{min-height:390px!important;}
+  .profile-main{padding:38px 30px 32px!important;}
+}
+
+/* Portfolio cards inspired by the provided visual reference: artwork first,
+   title/owner/dimensions over the image, no like/dislike controls. */
+.portfolio-grid{gap:22px!important;}
+.portfolio-card{
+  position:relative!important;
+  min-height:0!important;
+  aspect-ratio:4/3!important;
+  border-radius:26px!important;
+  overflow:hidden!important;
+  background:#0f172a!important;
+  border:1px solid var(--border)!important;
+  box-shadow:var(--sh2)!important;
+  isolation:isolate!important;
+  display:block!important;
+}
+.portfolio-card:hover{transform:translateY(-5px)!important;box-shadow:var(--sh3)!important;border-color:var(--g300)!important;}
+.portfolio-card-media{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  aspect-ratio:auto!important;
+  border-radius:inherit!important;
+  overflow:hidden!important;
+  background:#0f172a!important;
+}
+.portfolio-card-media::before{
+  content:''!important;
+  position:absolute!important;
+  inset:-20px!important;
+  z-index:0!important;
+  background-image:var(--portfolio-bg)!important;
+  background-size:cover!important;
+  background-position:center!important;
+  filter:blur(18px) saturate(.95) brightness(.76)!important;
+  opacity:.6!important;
+  transform:scale(1.08)!important;
+  pointer-events:none!important;
+}
+.portfolio-card-media::after{
+  content:''!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
+  background:linear-gradient(180deg,rgba(2,6,23,.03) 35%,rgba(2,6,23,.18) 55%,rgba(2,6,23,.88) 100%)!important;
+  pointer-events:none!important;
+}
+.portfolio-card-media img{
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  transform:none!important;
+  filter:none!important;
+}
+.portfolio-card:hover .portfolio-card-media img{transform:scale(1.012)!important;}
+.portfolio-card-body{
+  position:absolute!important;
+  inset:auto 0 0!important;
+  z-index:3!important;
+  padding:76px 20px 18px!important;
+  background:transparent!important;
+  color:#fff!important;
+  display:block!important;
+  pointer-events:none!important;
+}
+.portfolio-card-topline{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;margin-bottom:9px!important;}
+.portfolio-card-type,.portfolio-card-dim{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:28px!important;
+  padding:4px 10px!important;
+  margin:0!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.9)!important;
+  color:#0f172a!important;
+  border:1px solid rgba(255,255,255,.35)!important;
+  font-size:.66rem!important;
+  font-weight:900!important;
+  box-shadow:0 4px 14px rgba(2,6,23,.12)!important;
+  backdrop-filter:blur(8px)!important;
+  -webkit-backdrop-filter:blur(8px)!important;
+}
+.portfolio-card-dim{direction:ltr!important;unicode-bidi:embed!important;}
+.portfolio-card-title{
+  color:#fff!important;
+  font-size:1.08rem!important;
+  font-weight:950!important;
+  line-height:1.6!important;
+  margin:0 0 4px!important;
+  text-shadow:0 2px 14px rgba(2,6,23,.5)!important;
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+  overflow:hidden!important;
+}
+.portfolio-card-owner{color:var(--g300)!important;font-size:.82rem!important;font-weight:850!important;margin:0!important;text-shadow:0 2px 12px rgba(2,6,23,.55)!important;}
+.portfolio-card-desc{display:none!important;}
+.portfolio-card-more{
+  margin-top:10px!important;
+  padding-top:9px!important;
+  border-top:1px solid rgba(255,255,255,.18)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  color:rgba(255,255,255,.92)!important;
+  font-size:.72rem!important;
+  font-weight:850!important;
+}
+.portfolio-card-link{z-index:6!important;}
+.portfolio-edit,.portfolio-del{z-index:12!important;}
+@media(max-width:980px){.portfolio-card{aspect-ratio:4/3!important;}}
+@media(max-width:600px){
+  .portfolio-grid{gap:18px!important;}
+  .portfolio-card{aspect-ratio:16/11!important;border-radius:24px!important;}
+  .portfolio-card-body{padding:70px 17px 15px!important;}
+  .portfolio-card-title{font-size:1.02rem!important;}
+  .portfolio-card-owner{font-size:.78rem!important;}
+  .portfolio-card-type,.portfolio-card-dim{font-size:.62rem!important;min-height:26px!important;padding:3px 9px!important;}
+}
+
 </style>
-<!-- AESH v3.17: profile collision fixes + full artwork cards + complete package asset collection -->
+<!-- AESH v3.18: desktop profile restore + visual portfolio cards -->
 </head>
 <body class="">
 <div class="progress" id="progress" style="width:0%"></div>
@@ -2317,7 +2566,7 @@ function portfolioHref(item){return localPath(portfolioRoutePath(item));}
 function absolutePortfolioUrl(item){return canonicalPath(portfolioRoutePath(item));}
 function portfolioTypeLabel(type){return type==='teacher'?'نمونه‌کار استاد':'نمونه‌کار هنرجو';}
 function initPortfolioObserver(){if(portfolioImageObserver||!('IntersectionObserver' in window))return;portfolioImageObserver=new IntersectionObserver(function(entries){entries.forEach(function(en){if(en.isIntersecting){loadPortfolioCardImage(en.target);portfolioImageObserver.unobserve(en.target);}});},{rootMargin:'550px 0px'});}
-function loadPortfolioCardImage(media){if(!media||media.dataset.loaded==='1')return;media.dataset.loaded='1';var src=safeImageSrc(media.dataset.src||'');media.classList.remove('portfolio-loading');if(!src)return;try{media.style.setProperty('--portfolio-bg','url('+JSON.stringify(src)+')');}catch(e){media.style.setProperty('--portfolio-bg','none');}var im=document.createElement('img');im.alt=media.dataset.alt||'نمونه‌کار';im.decoding='async';im.loading='lazy';im.fetchPriority='low';im.src=src;im.onerror=function(){im.remove();media.style.removeProperty('--portfolio-bg');media.innerHTML='<div class="portfolio-ph"><i class="fas fa-image"></i></div>';};media.innerHTML='';media.appendChild(im);}
+function loadPortfolioCardImage(media){if(!media||media.dataset.loaded==='1')return;media.dataset.loaded='1';var src=safeImageSrc(media.dataset.src||'');media.classList.remove('portfolio-loading');if(!src)return;try{media.style.setProperty('--portfolio-bg','url('+JSON.stringify(src)+')');}catch(e){media.style.setProperty('--portfolio-bg','none');}var im=document.createElement('img');im.alt=media.dataset.alt||'نمونه‌کار';im.decoding='async';im.loading='lazy';im.fetchPriority='low';im.onload=function(){var card=media.closest('.portfolio-card'),dim=card&&card.querySelector('.portfolio-card-dim');if(dim&&im.naturalWidth&&im.naturalHeight){dim.textContent=toPersianDigits(im.naturalWidth)+'×'+toPersianDigits(im.naturalHeight);dim.title=im.naturalWidth+'×'+im.naturalHeight+' px';}};im.onerror=function(){im.remove();media.style.removeProperty('--portfolio-bg');media.innerHTML='<div class="portfolio-ph"><i class="fas fa-image"></i></div>';var card=media.closest('.portfolio-card'),dim=card&&card.querySelector('.portfolio-card-dim');if(dim)dim.textContent='ابعاد نامشخص';};im.src=src;media.innerHTML='';media.appendChild(im);}
 function observePortfolioMedia(){initPortfolioObserver();$$('.portfolio-card-media[data-src]',$('portfolioGrid')).forEach(function(m){if(portfolioImageObserver)portfolioImageObserver.observe(m);else loadPortfolioCardImage(m);});}
 function isBackgroundAssetUrl(src){
   var v=String(src||'').trim();
@@ -2384,7 +2633,7 @@ function setPortfolioFilter(kind){portfolioFilter=(kind==='teacher'||kind==='stu
 function showMorePortfolio(){portfolioVisibleCount+=12;renderPortfolio();}
 function renderPortfolio(){
   var g=$('portfolioGrid');if(!g)return;g.innerHTML='';var list=filteredPortfolio(),shown=list.slice(0,portfolioVisibleCount);$('portfolioCount').textContent=toPersianDigits(list.length)+' اثر';$('portfolioEmpty').classList.toggle('show',list.length===0);$('portfolioMoreBtn').classList.toggle('show',list.length>shown.length);
-  shown.forEach(function(item){var p=resolvePortfolioOwner(item),href=portfolioHref(item),src=safeImageSrc(item.image||item.thumb),card=document.createElement('article');card.className='portfolio-card';card.dataset.itemId=item.id;card.dataset.slug=item.slug;card.id='portfolio-'+safeId(item.id);var media=src?'<div class="portfolio-card-media portfolio-loading" data-src="'+esc(src)+'" data-alt="'+esc(item.title||'نمونه‌کار')+'"></div>':'<div class="portfolio-card-media"><div class="portfolio-ph"><i class="fas fa-image"></i></div></div>';card.innerHTML='<button class="portfolio-del" type="button" data-noedit title="حذف"><i class="fas fa-trash"></i></button><button class="portfolio-edit" type="button" data-noedit title="ویرایش"><i class="fas fa-pen"></i></button><a class="portfolio-card-link" href="'+esc(href)+'" aria-label="مشاهده '+esc(item.title||'نمونه‌کار')+'"></a>'+media+'<div class="portfolio-card-body"><span class="portfolio-card-type">'+portfolioTypeLabel(item.ownerType)+'</span><div class="portfolio-card-title">'+esc(item.title||'بدون عنوان')+'</div><div class="portfolio-card-owner">'+esc((p&&p.name)||item.ownerName||'بدون نام')+'</div><div class="portfolio-card-desc">'+esc(item.desc||'')+'</div><div class="portfolio-card-more"><span>مشاهده کامل</span><i class="fas fa-arrow-left"></i></div></div>';
+  shown.forEach(function(item){var p=resolvePortfolioOwner(item),href=portfolioHref(item),src=safeImageSrc(item.image||item.thumb),card=document.createElement('article');card.className='portfolio-card';card.dataset.itemId=item.id;card.dataset.slug=item.slug;card.id='portfolio-'+safeId(item.id);var media=src?'<div class="portfolio-card-media portfolio-loading" data-src="'+esc(src)+'" data-alt="'+esc(item.title||'نمونه‌کار')+'"></div>':'<div class="portfolio-card-media"><div class="portfolio-ph"><i class="fas fa-image"></i></div></div>';card.innerHTML='<button class="portfolio-del" type="button" data-noedit title="حذف"><i class="fas fa-trash"></i></button><button class="portfolio-edit" type="button" data-noedit title="ویرایش"><i class="fas fa-pen"></i></button><a class="portfolio-card-link" href="'+esc(href)+'" aria-label="مشاهده '+esc(item.title||'نمونه‌کار')+'"></a>'+media+'<div class="portfolio-card-body"><div class="portfolio-card-topline"><span class="portfolio-card-type">'+portfolioTypeLabel(item.ownerType)+'</span><span class="portfolio-card-dim">در حال خواندن ابعاد…</span></div><div class="portfolio-card-title">'+esc(item.title||'بدون عنوان')+'</div><div class="portfolio-card-owner">'+esc((p&&p.name)||item.ownerName||'بدون نام')+'</div><div class="portfolio-card-more"><span>مشاهده صفحه اثر</span><i class="fas fa-arrow-left"></i></div></div>';
     card.querySelector('.portfolio-edit').onclick=function(e){e.stopPropagation();editPortfolio(item.id);};card.querySelector('.portfolio-del').onclick=function(e){e.stopPropagation();deletePortfolio(item.id);};var a=card.querySelector('.portfolio-card-link');a.onclick=function(e){if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();navigateRoute(href);};g.appendChild(card);
   });observePortfolioMedia();
 }

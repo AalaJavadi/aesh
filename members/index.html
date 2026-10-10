@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self' https://*.supabase.co; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; form-action 'self'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>پنل اعضا و مدیریت آثار | AESH</title>
+<link rel="icon" href="../favicon.png" type="image/png">
+<link rel="stylesheet" href="members.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap nav"><a class="brand" href="../"><img src="../favicon.png" width="45" height="45" alt=""><span><strong>انجمن ادیتوران شایسته</strong><small>پنل خصوصی اعضا و مدیریت آثار</small></span></a><a class="back" href="../teachers/">بازگشت به سایت ←</a></div>
+</header>
+<main class="wrap main">
+  <div class="intro"><span class="eyebrow">AESH / MEMBER STUDIO</span><h1>پنل اختصاصی AESH</h1><p>ویرایش تصویر و بیوگرافی خودت، ارسال نمونه‌کار و پیگیری وضعیت تأیید. دسترسی اعضا به سایر قسمت‌های سایت بسته است.</p></div>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  <section id="setup" class="box caution" hidden><h2>راه‌اندازی کامل نشده</h2><p>مدیر انجمن باید Supabase را راه‌اندازی کند. تا آن زمان هیچ تغییری واقعی ذخیره نمی‌شود.</p></section>
+  <section id="login" class="box auth">
+    <div class="symbol">🔐</div>
+    <h2>ورود اعضای تأییدشده</h2>
+    <p class="secondary">ثبت‌نام عمومی وجود ندارد. حساب‌ها فقط توسط مدیر ساخته می‌شوند.</p>
+    <form id="loginForm" class="form">
+      <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" dir="ltr" required placeholder="email@example.com">
+      <label for="password">رمز عبور</label><input id="password" type="password" autocomplete="current-password" dir="ltr" required placeholder="رمز شخصی حساب">
+      <button id="loginButton" type="submit" class="primary">ورود به پنل</button>
+    </form>
+    <p class="secondary small">رمز در فایل سایت قرار نمی‌گیرد و فقط برای احراز هویت رمزنگاری‌شده در ارتباط HTTPS استفاده می‌شود.</p>
+  </section>
+  <section id="dashboard" hidden>
+    <div class="box greeting"><div><span class="eyebrow">حساب تأییدشده</span><h2 id="displayName"></h2><p class="secondary" id="roleName"></p></div><button id="logoutButton" class="outline" type="button">خروج امن</button></div>
+    <div class="columns" id="profileColumns">
+      <section class="box editor">
+        <h2>ویرایش اطلاعات مجاز</h2>
+        <p class="secondary">تغییرات بعد از ذخیره، روی پروفایل عمومی شما نمایش داده می‌شود.</p>
+        <form id="profileForm" class="form">
+          <label for="avatar">عکس پروفایل</label>
+          <div class="avatar-row"><div class="avatar-box" id="avatarBox"><span>📷</span><img id="avatarPreview" alt="پیش‌نمایش عکس پروفایل" hidden></div><div><input id="avatar" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"><label for="avatar" class="aesh-file-picker"><span class="aesh-file-button">انتخاب تصویر</span><span id="avatarFileName">هنوز تصویری انتخاب نشده است</span></label><p class="secondary small">JPG، PNG یا WebP. تصویر خودکار به WebP کم‌حجم تبدیل می‌شود (حداکثر ۲۵۰ کیلوبایت).</p></div></div>
+          <label for="bio">توضیحات / بیوگرافی</label>
+          <textarea id="bio" rows="7" maxlength="700" placeholder="درباره خودتان، سبک کاری و علایق…"></textarea>
+          <p id="bioCounter" class="counter">۰ / ۷۰۰</p>
+          <button id="saveButton" type="submit" class="primary">ذخیره تغییرات واقعی</button>
+        </form>
+      </section>
+      <aside class="box readonly">
+        <div class="lock">🔒</div><h2>اطلاعات قفل‌شده</h2>
+        <p class="secondary">این موارد را فقط مدیریت انجمن تعیین می‌کند و در این پنل امکان تغییرشان وجود ندارد.</p>
+        <ul><li>نام، نام کاربری و نوع عضویت</li><li>رتبه و سابقه / تجربه</li><li>خلاقیت و نمودار عملکرد</li><li>تعداد پروژه‌ها و امتیازها</li><li>افتخارات و اطلاعات رسمی انجمن</li></ul>
+        <p class="hint">این محدودیت فقط ظاهری نیست؛ دیتابیس هم اجازه تغییر این فیلدها را به حساب عضو نمی‌دهد.</p>
+      </aside>
+    </div>
+    <section id="workPanel" class="box work-panel">
+      <div class="work-heading">
+        <div><span class="eyebrow" id="workEyebrow">AESH / ARTWORK UPLOAD</span><h2 id="workHeading">ارسال نمونه‌کار جدید</h2><p id="workHelp" class="secondary">سقف آپلود اعضا ۴۰۰ کیلوبایت است. اثر بعد از تأیید مدیریت منتشر می‌شود؛ تعیین اسلاگ فقط توسط مدیریت انجام می‌شود.</p></div>
+        <span id="sizeTag" class="limit-tag">حداکثر ۴۰۰ کیلوبایت</span>
+      </div>
+      <form id="workForm" class="form">
+        <label for="workTitle">عنوان نمونه‌کار</label>
+        <input id="workTitle" maxlength="130" minlength="2" required placeholder="عنوان اثر خود را بنویسید">
+        <label for="workDescription">توضیحات اثر</label>
+        <textarea id="workDescription" maxlength="1400" rows="4" placeholder="ایده، روش اجرا و ابزارهای استفاده‌شده…"></textarea>
+        <label for="workImage">تصویر نمونه‌کار</label>
+        <input id="workImage" type="file" required accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
+        <p id="workFileInfo" class="secondary small" aria-live="polite">فایل JPG، PNG یا WebP انتخاب کنید. بعد از انتخاب، حجم فایل بررسی می‌شود.</p>
+        <div id="workImagePreviewBox" class="work-image-preview" hidden><img id="workImagePreview" alt="پیش‌نمایش نمونه‌کار"></div>
+        <div id="ownerFields" class="owner-only" hidden>
+          <label for="workOwner">صاحب اثر در سایت</label>
+          <select id="workOwner" aria-label="انتخاب استاد یا هنرجوی صاحب اثر"><option value="">انتخاب استاد یا هنرجو…</option></select>
+          <label for="workSlug">اسلاگ لینک (فقط مدیر)</label>
+          <input id="workSlug" dir="ltr" maxlength="90" placeholder="example-artwork-slug">
+          <p class="secondary small">فقط شما اسلاگ تعیین می‌کنید. خالی گذاشتن آن به معنی نمایش اثر بدون لینک اختصاصی است.</p>
+        </div>
+        <button id="workSubmit" class="primary" type="submit">ارسال برای تأیید مدیر</button>
+      </form>
+      <div class="my-work-header"><h3>نمونه‌کارهای ارسال‌شده من</h3><button type="button" id="refreshMyWorks" class="outline">بروزرسانی</button></div>
+      <div id="myWorksList" class="work-list"><p class="secondary">هنوز موردی بارگذاری نشده است.</p></div>
+    </section>
+    <section id="ownerModeration" class="box work-panel" hidden>
+      <div class="work-heading"><div><span class="eyebrow">AESH / OWNER ONLY</span><h2>تأیید آثار و مدیریت اسلاگ</h2><p class="secondary">فقط حساب مدیر می‌تواند اثر را منتشر، رد یا اسلاگ اختصاصی تعیین کند.</p></div><button id="refreshQueue" type="button" class="outline">تازه‌سازی</button></div>
+      <div id="reviewList" class="review-list"><p class="secondary">در حال دریافت آثار…</p></div>
+    </section>
+  </section>
+</main>
+<footer class="wrap foot">AESH — پنل اختصاصی اعضا و آثار</footer>
+<script src="../assets/aesh-config.js" defer></script>
+<script src="../assets/aesh-core.js" defer></script>
+<script src="members.js" defer></script>
+<script src="works-panel.js" defer></script>
+</body>
+</html>

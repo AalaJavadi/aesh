@@ -1,0 +1,5 @@
+/* v3.21: slugless member submissions get a details overlay, never a fake permalink. */
+#portfolioCopyLink[hidden]{display:none!important}
+.portfolio-card.aesh-no-work-slug .portfolio-card-more{opacity:.85}
+.portfolio-card-link[role=button]{cursor:pointer}
+.aesh-online-status{flex:1 1 100%;font-size:.72rem;color:#ad6300;line-height:1.7;margin:9px 0 0}

@@ -1,92 +1,147 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow,noarchive">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self' https://*.supabase.co; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; form-action 'self'; object-src 'none'">
-<meta name="referrer" content="no-referrer">
-<title>پنل اعضا و مدیریت آثار | AESH</title>
-<link rel="icon" href="../favicon.png" type="image/png">
-<link rel="stylesheet" href="members.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#F5B301">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self' https://*.supabase.co; script-src 'self'; style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' https://cdn.jsdelivr.net; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="پنل اختصاصی اساتید و هنرجویان انجمن ادیتوران شایسته برای مدیریت پروفایل و ارسال نمونه‌کار.">
+  <title>پنل اعضا | انجمن ادیتوران شایسته</title>
+  <link rel="icon" href="../favicon.png" type="image/png">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="stylesheet" href="members.css?v=3.22">
 </head>
 <body>
-<header class="top">
-  <div class="wrap nav"><a class="brand" href="../"><img src="../favicon.png" width="45" height="45" alt=""><span><strong>انجمن ادیتوران شایسته</strong><small>پنل خصوصی اعضا و مدیریت آثار</small></span></a><a class="back" href="../teachers/">بازگشت به سایت ←</a></div>
-</header>
-<main class="wrap main">
-  <div class="intro"><span class="eyebrow">AESH / MEMBER STUDIO</span><h1>پنل اختصاصی AESH</h1><p>ویرایش تصویر و بیوگرافی خودت، ارسال نمونه‌کار و پیگیری وضعیت تأیید. دسترسی اعضا به سایر قسمت‌های سایت بسته است.</p></div>
-  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-  <section id="setup" class="box caution" hidden><h2>راه‌اندازی کامل نشده</h2><p>مدیر انجمن باید Supabase را راه‌اندازی کند. تا آن زمان هیچ تغییری واقعی ذخیره نمی‌شود.</p></section>
-  <section id="login" class="box auth">
-    <div class="symbol">🔐</div>
-    <h2>ورود اعضای تأییدشده</h2>
-    <p class="secondary">ثبت‌نام عمومی وجود ندارد. حساب‌ها فقط توسط مدیر ساخته می‌شوند.</p>
-    <form id="loginForm" class="form">
-      <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" dir="ltr" required placeholder="email@example.com">
-      <label for="password">رمز عبور</label><input id="password" type="password" autocomplete="current-password" dir="ltr" required placeholder="رمز شخصی حساب">
-      <button id="loginButton" type="submit" class="primary">ورود به پنل</button>
-    </form>
-    <p class="secondary small">رمز در فایل سایت قرار نمی‌گیرد و فقط برای احراز هویت رمزنگاری‌شده در ارتباط HTTPS استفاده می‌شود.</p>
-  </section>
-  <section id="dashboard" hidden>
-    <div class="box greeting"><div><span class="eyebrow">حساب تأییدشده</span><h2 id="displayName"></h2><p class="secondary" id="roleName"></p></div><button id="logoutButton" class="outline" type="button">خروج امن</button></div>
-    <div class="columns" id="profileColumns">
-      <section class="box editor">
-        <h2>ویرایش اطلاعات مجاز</h2>
-        <p class="secondary">تغییرات بعد از ذخیره، روی پروفایل عمومی شما نمایش داده می‌شود.</p>
-        <form id="profileForm" class="form">
-          <label for="avatar">عکس پروفایل</label>
-          <div class="avatar-row"><div class="avatar-box" id="avatarBox"><span>📷</span><img id="avatarPreview" alt="پیش‌نمایش عکس پروفایل" hidden></div><div><input id="avatar" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"><label for="avatar" class="aesh-file-picker"><span class="aesh-file-button">انتخاب تصویر</span><span id="avatarFileName">هنوز تصویری انتخاب نشده است</span></label><p class="secondary small">JPG، PNG یا WebP. تصویر خودکار به WebP کم‌حجم تبدیل می‌شود (حداکثر ۲۵۰ کیلوبایت).</p></div></div>
-          <label for="bio">توضیحات / بیوگرافی</label>
-          <textarea id="bio" rows="7" maxlength="700" placeholder="درباره خودتان، سبک کاری و علایق…"></textarea>
-          <p id="bioCounter" class="counter">۰ / ۷۰۰</p>
-          <button id="saveButton" type="submit" class="primary">ذخیره تغییرات واقعی</button>
-        </form>
-      </section>
-      <aside class="box readonly">
-        <div class="lock">🔒</div><h2>اطلاعات قفل‌شده</h2>
-        <p class="secondary">این موارد را فقط مدیریت انجمن تعیین می‌کند و در این پنل امکان تغییرشان وجود ندارد.</p>
-        <ul><li>نام، نام کاربری و نوع عضویت</li><li>رتبه و سابقه / تجربه</li><li>خلاقیت و نمودار عملکرد</li><li>تعداد پروژه‌ها و امتیازها</li><li>افتخارات و اطلاعات رسمی انجمن</li></ul>
-        <p class="hint">این محدودیت فقط ظاهری نیست؛ دیتابیس هم اجازه تغییر این فیلدها را به حساب عضو نمی‌دهد.</p>
-      </aside>
+  <header class="header">
+    <div class="header-in container-wide">
+      <a class="brand" href="../" aria-label="صفحه اصلی انجمن ادیتوران شایسته">
+        <span class="brand-logo"><img src="../favicon.png" width="44" height="44" alt="لوگوی انجمن ادیتوران شایسته"></span>
+        <span class="brand-text"><strong class="brand-title"><span>انجمن</span> ادیتوران شایسته</strong><small class="brand-sub">مرجع تخصصی ادیت تصویر</small></span>
+      </a>
+      <nav class="nav" aria-label="دسترسی به بخش‌های سایت">
+        <a href="../">خانه</a>
+        <a href="../teachers/">اساتید</a>
+        <a href="../students/">هنرجوها</a>
+        <a href="../portfolio/">نمونه‌کارها</a>
+        <a class="active" href="./" aria-current="page">پنل اعضا</a>
+      </nav>
+      <a class="back" href="../">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
+        <span>صفحه اصلی</span>
+      </a>
     </div>
-    <section id="workPanel" class="box work-panel">
-      <div class="work-heading">
-        <div><span class="eyebrow" id="workEyebrow">AESH / ARTWORK UPLOAD</span><h2 id="workHeading">ارسال نمونه‌کار جدید</h2><p id="workHelp" class="secondary">سقف آپلود اعضا ۴۰۰ کیلوبایت است. اثر بعد از تأیید مدیریت منتشر می‌شود؛ تعیین اسلاگ فقط توسط مدیریت انجام می‌شود.</p></div>
-        <span id="sizeTag" class="limit-tag">حداکثر ۴۰۰ کیلوبایت</span>
-      </div>
-      <form id="workForm" class="form">
-        <label for="workTitle">عنوان نمونه‌کار</label>
-        <input id="workTitle" maxlength="130" minlength="2" required placeholder="عنوان اثر خود را بنویسید">
-        <label for="workDescription">توضیحات اثر</label>
-        <textarea id="workDescription" maxlength="1400" rows="4" placeholder="ایده، روش اجرا و ابزارهای استفاده‌شده…"></textarea>
-        <label for="workImage">تصویر نمونه‌کار</label>
-        <input id="workImage" type="file" required accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
-        <p id="workFileInfo" class="secondary small" aria-live="polite">فایل JPG، PNG یا WebP انتخاب کنید. بعد از انتخاب، حجم فایل بررسی می‌شود.</p>
-        <div id="workImagePreviewBox" class="work-image-preview" hidden><img id="workImagePreview" alt="پیش‌نمایش نمونه‌کار"></div>
-        <div id="ownerFields" class="owner-only" hidden>
-          <label for="workOwner">صاحب اثر در سایت</label>
-          <select id="workOwner" aria-label="انتخاب استاد یا هنرجوی صاحب اثر"><option value="">انتخاب استاد یا هنرجو…</option></select>
-          <label for="workSlug">اسلاگ لینک (فقط مدیر)</label>
-          <input id="workSlug" dir="ltr" maxlength="90" placeholder="example-artwork-slug">
-          <p class="secondary small">فقط شما اسلاگ تعیین می‌کنید. خالی گذاشتن آن به معنی نمایش اثر بدون لینک اختصاصی است.</p>
-        </div>
-        <button id="workSubmit" class="primary" type="submit">ارسال برای تأیید مدیر</button>
-      </form>
-      <div class="my-work-header"><h3>نمونه‌کارهای ارسال‌شده من</h3><button type="button" id="refreshMyWorks" class="outline">بروزرسانی</button></div>
-      <div id="myWorksList" class="work-list"><p class="secondary">هنوز موردی بارگذاری نشده است.</p></div>
-    </section>
-    <section id="ownerModeration" class="box work-panel" hidden>
-      <div class="work-heading"><div><span class="eyebrow">AESH / OWNER ONLY</span><h2>تأیید آثار و مدیریت اسلاگ</h2><p class="secondary">فقط حساب مدیر می‌تواند اثر را منتشر، رد یا اسلاگ اختصاصی تعیین کند.</p></div><button id="refreshQueue" type="button" class="outline">تازه‌سازی</button></div>
-      <div id="reviewList" class="review-list"><p class="secondary">در حال دریافت آثار…</p></div>
-    </section>
+  </header>
+
+  <section class="hero" aria-labelledby="pageTitle">
+    <div class="hero-in container">
+      <span class="hero-badge"><span class="hero-dot"></span>فضای اختصاصی اساتید و هنرجویان</span>
+      <h1 id="pageTitle">پنل <span>اعضای انجمن</span></h1>
+      <p>پروفایل خود را مدیریت کنید، نمونه‌کارهای تازه بفرستید و نتیجه بررسی آثار را در یک فضای اختصاصی دنبال کنید.</p>
+      <div class="hero-meta"><span><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7l-8-4Z"/></svg> ویژه اعضای تأییدشده</span><span class="hero-separator" aria-hidden="true"></span><span>انجمن ادیتوران شایسته · AESH</span></div>
+    </div>
   </section>
-</main>
-<footer class="wrap foot">AESH — پنل اختصاصی اعضا و آثار</footer>
-<script src="../assets/aesh-config.js" defer></script>
-<script src="../assets/aesh-core.js" defer></script>
-<script src="members.js" defer></script>
-<script src="works-panel.js" defer></script>
+
+  <main class="container workspace">
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <section id="setup" class="setup-box" hidden>
+      <span class="setup-symbol" aria-hidden="true">!</span>
+      <div><h2>پنل هنوز فعال نشده است</h2><p>برای فعال شدن ورود و ذخیره اطلاعات، ابتدا باید تنظیمات اتصال پنل توسط مدیریت انجمن تکمیل شود.</p></div>
+    </section>
+
+    <section id="login" class="login-layout" aria-labelledby="loginTitle">
+      <div class="box auth">
+        <div class="auth-top">
+          <span class="feature-icon auth-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg>
+          </span>
+          <span class="section-pill">ورود اعضا</span>
+        </div>
+        <h2 id="loginTitle">به حساب خود وارد شوید</h2>
+        <p class="secondary auth-description">برای ورود، ایمیل و رمز عبور حسابی را وارد کنید که مدیریت انجمن برای شما ساخته است.</p>
+        <form id="loginForm" class="form login-form">
+          <div class="field"><label for="email">آدرس ایمیل</label><input id="email" type="email" autocomplete="username" dir="ltr" inputmode="email" required placeholder="name@example.com"></div>
+          <div class="field"><label for="password">رمز عبور</label><input id="password" type="password" autocomplete="current-password" dir="ltr" required placeholder="رمز عبور حساب شما"></div>
+          <button id="loginButton" type="submit" class="primary">ورود به پنل <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7 7-7-7 7-7"/></svg></button>
+        </form>
+        <div class="auth-note"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>عضویت در این بخش با تأیید مدیریت انجمن انجام می‌شود.</span></div>
+      </div>
+      <aside class="welcome-card" aria-label="امکانات پنل اعضا">
+        <div class="welcome-top"><span class="eyebrow">امکانات پنل</span><h2>همه‌چیز برای مدیریت آثار شما</h2><p>برای دیده شدن استعداد و خلاقیت شما در انجمن.</p></div>
+        <div class="feature-list">
+          <div class="feature-row"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21v-2a7.5 7.5 0 0 1 15 0v2"/></svg></span><span><strong>پروفایل اختصاصی</strong><small>تصویر و معرفی خود را به‌روز نگه دارید.</small></span></div>
+          <div class="feature-row"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span><span><strong>ارسال نمونه‌کار</strong><small>آثار خود را برای بررسی و انتشار بفرستید.</small></span></div>
+          <div class="feature-row"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="10"/></svg></span><span><strong>پیگیری وضعیت آثار</strong><small>از نتیجه بررسی نمونه‌کارها باخبر شوید.</small></span></div>
+        </div>
+        <div class="welcome-signature"><span class="signature-mark" aria-hidden="true"></span><span>جایی که خلاقیت به تصویر تبدیل می‌شود</span></div>
+      </aside>
+    </section>
+
+    <section id="dashboard" hidden aria-label="داشبورد اعضا">
+      <div class="box greeting">
+        <div class="greeting-member"><span class="feature-icon greeting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><div><span class="eyebrow">خوش آمدید</span><h2 id="displayName"></h2><p class="secondary" id="roleName"></p></div></div>
+        <button id="logoutButton" class="outline" type="button"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg> خروج از حساب</button>
+      </div>
+
+      <div class="section-intro"><div><span class="eyebrow">حساب کاربری</span><h2>مدیریت پروفایل</h2></div><p>اطلاعاتی را که امکان ویرایش دارند، از این بخش به‌روز کنید.</p></div>
+      <div class="columns" id="profileColumns">
+        <section class="box editor">
+          <div class="box-heading"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16 4l4 4-11 11H5v-4L16 4Z"/></svg></span><div><h2>ویرایش اطلاعات پروفایل</h2><p class="secondary">تصویر و معرفی شما پس از ذخیره در پروفایل عمومی نمایش داده می‌شود.</p></div></div>
+          <form id="profileForm" class="form">
+            <label for="avatar">عکس پروفایل</label>
+            <div class="avatar-row"><div class="avatar-box" id="avatarBox"><span><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><img id="avatarPreview" alt="پیش‌نمایش عکس پروفایل" hidden></div><div class="avatar-picker"><input id="avatar" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"><label for="avatar" class="aesh-file-picker"><span class="aesh-file-button">انتخاب تصویر</span><span id="avatarFileName">هنوز تصویری انتخاب نشده است</span></label><p class="secondary small">فرمت‌های JPG، PNG و WebP؛ تصویر به‌صورت خودکار به WebP تبدیل می‌شود (تا ۲۵۰ کیلوبایت).</p></div></div>
+            <label for="bio">معرفی کوتاه / بیوگرافی</label>
+            <textarea id="bio" rows="7" maxlength="700" placeholder="کمی درباره خودتان، تخصص‌ها و سبک کاری‌تان بنویسید…"></textarea>
+            <p id="bioCounter" class="counter">۰ / ۷۰۰</p>
+            <button id="saveButton" type="submit" class="primary">ذخیره تغییرات <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></button>
+          </form>
+        </section>
+        <aside class="box readonly">
+          <div class="box-heading"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><div><h2>اطلاعات رسمی حساب</h2><p class="secondary">موارد زیر فقط توسط مدیریت انجمن تغییر می‌کنند.</p></div></div>
+          <ul><li>نام، نام کاربری و نوع عضویت</li><li>رتبه، سابقه و میزان تجربه</li><li>خلاقیت و نمودار عملکرد</li><li>تعداد پروژه‌ها و امتیازها</li><li>افتخارات و اطلاعات رسمی انجمن</li></ul>
+          <p class="hint">برای اصلاح اطلاعات رسمی حساب، با مدیریت انجمن در ارتباط باشید.</p>
+        </aside>
+      </div>
+
+      <section id="workPanel" class="box work-panel">
+        <div class="work-heading"><div><span class="eyebrow" id="workEyebrow">گالری اعضا</span><h2 id="workHeading">ارسال نمونه‌کار جدید</h2><p id="workHelp" class="secondary">تصویر تا ۴۰۰ کیلوبایت مجاز است؛ اثر پس از بررسی و تأیید مدیریت منتشر می‌شود.</p></div><span id="sizeTag" class="limit-tag">حداکثر ۴۰۰ کیلوبایت</span></div>
+        <form id="workForm" class="form">
+          <label for="workTitle">عنوان نمونه‌کار</label>
+          <input id="workTitle" maxlength="130" minlength="2" required placeholder="برای اثر خود یک عنوان بنویسید">
+          <label for="workDescription">توضیحات اثر</label>
+          <textarea id="workDescription" maxlength="1400" rows="4" placeholder="درباره ایده، روش اجرا یا ابزارهای استفاده‌شده بنویسید…"></textarea>
+          <label for="workImage">تصویر نمونه‌کار</label>
+          <input id="workImage" type="file" required accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
+          <p id="workFileInfo" class="secondary small" aria-live="polite">فایل JPG، PNG یا WebP انتخاب کنید؛ حجم فایل پس از انتخاب بررسی می‌شود.</p>
+          <div id="workImagePreviewBox" class="work-image-preview" hidden><img id="workImagePreview" alt="پیش‌نمایش نمونه‌کار"></div>
+          <div id="ownerFields" class="owner-only" hidden>
+            <label for="workOwner">صاحب اثر در سایت</label><select id="workOwner" aria-label="انتخاب استاد یا هنرجوی صاحب اثر"><option value="">انتخاب استاد یا هنرجو…</option></select>
+            <label for="workSlug">شناسه لینک اختصاصی (فقط مدیر)</label><input id="workSlug" dir="ltr" maxlength="90" placeholder="example-artwork-slug">
+            <p class="secondary small">تعیین شناسه لینک فقط برای مدیریت امکان‌پذیر است؛ در صورت خالی بودن، اثر بدون لینک اختصاصی نمایش داده می‌شود.</p>
+          </div>
+          <button id="workSubmit" class="primary" type="submit">ارسال برای تأیید مدیر</button>
+        </form>
+        <div class="my-work-header"><h3>نمونه‌کارهای ارسال‌شده من</h3><button type="button" id="refreshMyWorks" class="outline">به‌روزرسانی</button></div>
+        <div id="myWorksList" class="work-list"><p class="secondary">هنوز نمونه‌کاری ارسال نشده است.</p></div>
+      </section>
+
+      <section id="ownerModeration" class="box work-panel" hidden>
+        <div class="work-heading"><div><span class="eyebrow">ویژه مدیریت</span><h2>بررسی و تأیید آثار</h2><p class="secondary">انتشار، رد آثار و تعیین لینک اختصاصی فقط در اختیار مدیریت انجمن است.</p></div><button id="refreshQueue" type="button" class="outline">به‌روزرسانی</button></div>
+        <div id="reviewList" class="review-list"><p class="secondary">در حال دریافت آثار…</p></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner"><div class="footer-brand"><span class="footer-mark">A</span><span><strong>انجمن ادیتوران شایسته</strong><small>جایی که خلاقیت به تصویر تبدیل می‌شود.</small></span></div><div class="footer-links"><a href="../">صفحه اصلی</a><a href="../teachers/">اساتید</a><a href="../students/">هنرجوها</a><a href="../rules/">قوانین انجمن</a></div></div>
+    <div class="container footer-bottom">© ۱۴۰۵ انجمن ادیتوران شایسته — تمامی حقوق محفوظ است.</div>
+  </footer>
+
+  <script src="../assets/aesh-config.js" defer></script>
+  <script src="../assets/aesh-core.js" defer></script>
+  <script src="members.js" defer></script>
+  <script src="works-panel.js" defer></script>
 </body>
 </html>

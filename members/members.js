@@ -111,7 +111,7 @@
       try {
         const person = await api.login($('email').value, $('password').value);
         $('password').value = '';
-        await showDashboard(person); notice('به پنل اختصاصی خودت وارد شدی.');
+        await showDashboard(person); notice('ورود به پنل با موفقیت انجام شد.');
       } catch (error) { $('password').value = ''; notice(error.message, true); }
       finally { busy(false); }
     });
@@ -136,7 +136,7 @@
     });
     $('logoutButton').addEventListener('click', async () => {
       if (loading) return; busy(true);
-      await api.logout(); showLogin(); busy(false); notice('از حساب خارج شدید.');
+      await api.logout(); showLogin(); busy(false); notice('با موفقیت از حساب خارج شدید.');
     });
     if (!api.configured()) {
       show('setup', true); $('loginButton').disabled = true; return;

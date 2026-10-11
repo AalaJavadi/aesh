@@ -178,11 +178,12 @@
       });
     }
     area.appendChild(buttons);
-    const hint = document.createElement('p'); hint.className = 'aesh-vote-message';
-    if (!allowed) hint.textContent = 'رأی مهمان هنوز در پایگاه داده فعال نشده است؛ مدیر باید فایل SQL نسخه جدید را در Supabase اجرا کند.';
-    else if (api.authenticated()) hint.textContent = 'رأی شما ذخیره می‌شود. برای تغییر یا حذف رأی، دوباره روی همان گزینه بزنید.';
-    else hint.textContent = 'بدون ورود هم می‌توانید لایک یا دیسلایک کنید. رأی مهمان برای همین مرورگر ذخیره می‌شود و با پاک کردن اطلاعات مرورگر ممکن است شناسه رأی تغییر کند.';
-    area.appendChild(hint);
+    // Keep the vote area clean for normal use; show setup guidance only when voting is unavailable.
+    if (!allowed) {
+      const hint = document.createElement('p'); hint.className = 'aesh-vote-message';
+      hint.textContent = 'رأی مهمان هنوز در پایگاه داده فعال نشده است؛ مدیر باید فایل SQL نسخه جدید را در Supabase اجرا کند.';
+      area.appendChild(hint);
+    }
   }
   async function loadVotes(work) {
     const key = work && work._aesh_key ? String(work._aesh_key) : 'legacy:' + String(work && work.id || '');

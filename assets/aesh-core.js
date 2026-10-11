@@ -1,6 +1,6 @@
-/* AESH v3.20: passwordless-in-source Supabase Auth + protected RPC adapter.
-   Password is sent ONLY to the HTTPS Supabase Auth endpoint, never stored in a site file.
-   Session tokens are held in sessionStorage (per-tab), never localStorage.
+/* AESH v3.23: Supabase Auth + protected RPC adapter.
+   Passwords never appear in site files. Refresh sessions persist locally until logout.
+   Persisted tokens can be read by JavaScript on this origin; keep the site's CSP tight.
 */
 (function () {
   'use strict';
@@ -12,10 +12,20 @@
   let session = null;
   let member = null;
   let renewing = null;
-  try {
-    const saved = sessionStorage.getItem(storageKey);
-    session = saved ? JSON.parse(saved) : null;
-  } catch (_) { session = null; }
+  // Try localStorage first, then older sessionStorage values from the previous release.
+  let remembered = null;
+  try { remembered = localStorage.getItem(storageKey); } catch (_) {}
+  if (!remembered) try { remembered = sessionStorage.getItem(storageKey); } catch (_) {}
+  try { session = remembered ? JSON.parse(remembered) : null; } catch (_) { session = null; }
+  if (session && session.refresh_token) try { localStorage.setItem(storageKey, JSON.stringify(session)); } catch (_) {}
+  try { sessionStorage.removeItem(storageKey); } catch (_) {}
+  window.addEventListener('storage', event => {
+    if (event.key !== storageKey) return;
+    try { session = event.newValue ? JSON.parse(event.newValue) : null; }
+    catch (_) { session = null; }
+    member = null;
+    window.dispatchEvent(new Event('aesh:session'));
+  });
   function alertError(payload, status) {
     const text = String((payload && (payload.error_description || payload.msg || payload.message || payload.error)) || 'خطای ارتباط با سرور').slice(0, 160);
     if (/invalid login credentials/i.test(text)) return 'ایمیل یا رمز عبور اشتباه است.';
@@ -27,7 +37,15 @@
   function save(next) {
     session = next;
     member = null;
-    try { if (next) sessionStorage.setItem(storageKey, JSON.stringify(next)); else sessionStorage.removeItem(storageKey); } catch (_) {}
+    try {
+      if (next) localStorage.setItem(storageKey, JSON.stringify(next));
+      else localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(storageKey);
+    } catch (_) {
+      // Non-persistent fallback for browsers that block localStorage.
+      try { if (next) sessionStorage.setItem(storageKey, JSON.stringify(next));
+            else sessionStorage.removeItem(storageKey); } catch (_) {}
+    }
     window.dispatchEvent(new Event('aesh:session'));
   }
   function configured() { return enabled; }

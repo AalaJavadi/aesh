@@ -96,6 +96,18 @@
     if (s && (s.length < 2 || s.length > 90 || !/^[a-z0-9ء-ی]+(?:-[a-z0-9ء-ی]+)*$/.test(s))) throw new Error('اسلاگ باید ۲ تا ۹۰ حرف/عدد با خط تیره باشد.');
     return s;
   }
+  // Stable slugs are assigned by the owner RPC on publication, not by users editing DB keys.
+  function slugFor(title, id) {
+    const cleaned = normalizeOwnerSlug(String(title || '').slice(0, 75));
+    const fallback = cleaned || 'اثر';
+    const suffix = String(id || '').replace(/[^a-f0-9]/gi, '').slice(0, 8).toLowerCase();
+    if (!suffix) throw new Error('شناسه یکتای اثر مشخص نیست.');
+    return fallback.slice(0, 90 - suffix.length - 1).replace(/-+$/, '') + '-' + suffix;
+  }
+  function publicWorkLink(slug) {
+    if (!slug) return '';
+    return new URL('../work/' + encodeURIComponent(slug) + '/', location.href).href;
+  }
   function statusBadge(status) {
     const span = document.createElement('span');
     span.className = 'work-chip ' + (statusText[status] ? status : '');
@@ -118,7 +130,14 @@
         const info=document.createElement('div');
         const title=document.createElement('strong');title.textContent=String(item.title||'نمونه‌کار');
         const date=document.createElement('time');date.textContent=' — '+new Date(item.created_at).toLocaleDateString('fa-IR');
-        info.append(title,date);el.append(info,statusBadge(item.status));root.append(el);
+        info.append(title,date);
+        if (item.status === 'published' && item.slug) {
+          const link = document.createElement('a');
+          link.href = publicWorkLink(item.slug); link.target = '_blank'; link.rel = 'noopener noreferrer';
+          link.textContent = 'مشاهده لینک اختصاصی اثر';
+          info.append(document.createElement('br'), link);
+        }
+        el.append(info,statusBadge(item.status));root.append(el);
       }
     } catch(error) { root.textContent='دریافت آثار ممکن نبود: '+error.message; }
   }
@@ -151,12 +170,13 @@
         if (!$('workOwner').value.includes(':')) throw new Error('صاحب اثر را از فهرست انتخاب کنید.');
         const [role,...slugParts]=$('workOwner').value.split(':');
         const slugOwner=slugParts.join(':');
-        info={role,slugOwner,slug:normalizeOwnerSlug($('workSlug').value)};
+        info={role,slugOwner};
       }
       saving=true;$('workSubmit').disabled=true;
       $('workSubmit').textContent='در حال بهینه‌سازی و آپلود…';
       setNotice('در حال آماده‌سازی پیش‌نمایش و ارسال امن تصویر…',false);
       const id=api.newWorkId();
+      if (info) info.slug = slugFor(title, id);
       const thumb=await buildThumb(file);
       const thumbPath=await api.uploadWorkThumb(thumb,id);
       const imagePath=await api.uploadWorkImage(file,id,isOwner());
@@ -164,7 +184,7 @@
       if (info) await api.ownerSubmitWork(title,description,imagePath,thumbPath,info.role,info.slugOwner,info.slug);
       else await api.submitMyWork(title,description,imagePath,thumbPath);
       $('workForm').reset();cleanupPreview();showFile();
-      setNotice(info ? 'نمونه‌کار با موفقیت منتشر شد و در شمارنده آثار محاسبه می‌شود.' : 'نمونه‌کار در سرور ذخیره شد و در انتظار تأیید مدیریت است.',false);
+      setNotice(info ? 'نمونه‌کار منتشر شد. لینک اختصاصی اثر: '+publicWorkLink(info.slug) : 'نمونه‌کار در سرور ذخیره شد و در انتظار تأیید مدیریت است.',false);
       await loadMyWorks();
       if (info) await loadQueue();
     } catch(error) {
@@ -196,20 +216,29 @@
         const select=document.createElement('select');
         for (const v of ['pending','published','rejected']) {const opt=document.createElement('option');opt.value=v;opt.textContent=statusText[v];select.append(opt);}
         select.value=item.status||'pending';statusBox.append(select);
-        const slugBox=document.createElement('label');slugBox.textContent='اسلاگ اختصاصی (فقط مدیریت)';
-        const input=document.createElement('input');input.type='text';input.dir='ltr';input.maxLength=90;input.value=item.slug||'';input.placeholder='اختیاری';slugBox.append(input);
+        const previewLink = item.slug || slugFor(item.title, item.id);
+        const infoLink = document.createElement('p');
+        infoLink.className = 'secondary small';
+        infoLink.textContent = item.status === 'published' ? 'لینک اختصاصی ثبت شده است.' : 'لینک اختصاصی هنگام تأیید ساخته می‌شود.';
+        if (item.status === 'published' && item.slug) {
+          const anchor=document.createElement('a');anchor.className='review-work-link';
+          anchor.href=publicWorkLink(item.slug);anchor.target='_blank';anchor.rel='noopener noreferrer';
+          anchor.textContent='مشاهده صفحه نمونه‌کار';card.append(anchor);
+        }
+        card.append(infoLink);
         const button=document.createElement('button');button.type='button';button.textContent='ذخیره تصمیم';
         button.addEventListener('click',async()=>{
           if (!isOwner()||button.disabled) return;
           button.disabled=true;
           try {
-            const slug=normalizeOwnerSlug(input.value);
+            // Keep an existing published link stable; otherwise make a unique one from title.
+            const slug = item.slug || (select.value === 'published' ? previewLink : '');
             await api.ownerManageWork(item.id,select.value,slug);
-            setNotice('وضعیت و اسلاگ اثر روی سرور ذخیره شد.',false);
+            setNotice(select.value === 'published' ? 'نمونه‌کار منتشر شد و لینک اختصاصی آن ذخیره شد.' : 'وضعیت اثر ذخیره شد.',false);
             await loadQueue();await loadMyWorks();
           } catch(error) {setNotice('ذخیره تصمیم انجام نشد: '+error.message,true);button.disabled=false;}
         });
-        controls.append(statusBox,slugBox,button);card.append(controls);root.append(card);
+        controls.append(statusBox,button);card.append(controls);root.append(card);
       }
     } catch(error) {root.textContent='دریافت فهرست مدیریت ممکن نبود: '+error.message;}
   }
@@ -224,8 +253,8 @@
     $('sizeTag').textContent=owner?'حداکثر ۱۲ مگابایت':'حداکثر ۴۰۰ کیلوبایت';
     $('workHeading').textContent=owner?'انتشار نمونه‌کار توسط مدیر':'ارسال نمونه‌کار جدید';
     $('workHelp').textContent=owner
-      ? 'تصویر تا ۱۲ مگابایت قابل آپلود است؛ فقط مدیر می‌تواند صاحب اثر، اسلاگ و وضعیت انتشار را تعیین کند.'
-      : 'تصویر تا ۴۰۰ کیلوبایت مجاز است؛ پس از آپلود، اثر در انتظار تأیید مدیریت می‌ماند. تعیین اسلاگ برای اعضا امکان‌پذیر نیست.';
+      ? 'تصویر تا ۱۲ مگابایت قابل آپلود است؛ صاحب اثر را انتخاب کنید. لینک اختصاصی خودکار ساخته می‌شود.'
+      : 'تصویر تا ۴۰۰ کیلوبایت مجاز است؛ لینک اثر پس از تأیید مدیریت خودکار فعال می‌شود.';
     $('workSubmit').textContent=owner?'ثبت و انتشار نمونه‌کار':'ارسال برای تأیید مدیر';
     $('myWorksList').previousElementSibling.querySelector('h3').textContent=owner?'نمونه‌کارهای آپلودشده مدیر':'نمونه‌کارهای ارسال‌شده من';
     $('workForm').reset();cleanupPreview();showFile();

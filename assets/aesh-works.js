@@ -47,7 +47,8 @@
       slug:row.slug || '', title:String(row.title||'نمونه‌کار').slice(0,130),
       desc:String(row.description||'').slice(0,1400),
       ownerType:row.owner_role, ownerSlug:String(row.owner_slug||''),
-      ownerName:String(row.owner_name||''),image,thumb
+      ownerName:String(row.owner_name||''),image,thumb,
+      fullWidth:Number(row.full_width||row.width)||0, fullHeight:Number(row.full_height||row.height)||0
     };
   }
   function showError(message) {

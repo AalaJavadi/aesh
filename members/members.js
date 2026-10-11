@@ -36,6 +36,7 @@
   }
   async function showDashboard(profile) {
     me = profile;
+    document.body.classList.add('aesh-signed-in');
     window.dispatchEvent(new CustomEvent('aesh:member-dashboard', { detail: { profile } }));
     show('login', false);
     show('dashboard', true);
@@ -52,7 +53,7 @@
   }
   function showLogin() {
     window.dispatchEvent(new Event('aesh:member-logout'));
-    me = null; show('dashboard', false); show('login', true);
+    me = null; document.body.classList.remove('aesh-signed-in'); show('dashboard', false); show('login', true);
     $('password').value = ''; $('avatar').value = '';
     $('avatarFileName').textContent = 'هنوز تصویری انتخاب نشده است';
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -133,6 +134,10 @@
         notice('تصویر و توضیحات روی سرور ذخیره شدند و در پروفایل عمومی نمایش داده می‌شوند.');
       } catch (error) { notice('ذخیره انجام نشد: ' + error.message, true); }
       finally { busy(false); }
+    });
+    // Other open tabs should immediately reflect a logout.
+    window.addEventListener('aesh:session', () => {
+      if (me && !api.authenticated()) { showLogin(); notice('نشست شما پایان یافت.'); }
     });
     $('logoutButton').addEventListener('click', async () => {
       if (loading) return; busy(true);

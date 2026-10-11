@@ -98,9 +98,51 @@
     status.textContent = 'در حال دریافت تعداد رأی‌ها…'; area.appendChild(status);
     return area;
   }
-  function paintCounts(area, counts, key) {
+  // Guest identity survives browser restarts. It is pseudonymous, not a verified user account.
+  const guestStorageKey = 'aesh:guest-voter:v323';
+  let fallbackGuestId = '';
+  function guestId() {
+    try {
+      const saved = localStorage.getItem(guestStorageKey);
+      if (saved && /^[0-9a-f-]{36}$/i.test(saved)) return saved;
+    } catch (_) { /* privacy modes can disable storage */ }
+    if (!fallbackGuestId) {
+      if (!window.crypto || !crypto.getRandomValues) return '';
+      if (crypto.randomUUID) fallbackGuestId = crypto.randomUUID();
+      else {
+        const a = crypto.getRandomValues(new Uint8Array(16));
+        a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;
+        const n=Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
+        fallbackGuestId=n.slice(0,8)+'-'+n.slice(8,12)+'-'+n.slice(12,16)+'-'+n.slice(16,20)+'-'+n.slice(20);
+      }
+    }
+    try { localStorage.setItem(guestStorageKey, fallbackGuestId); } catch (_) {}
+    return fallbackGuestId;
+  }
+  async function combinedVotes(key) {
+    const rows = await api.rpc('aesh_vote_summary', { p_work_key: key });
+    const baseResult = Array.isArray(rows) ? rows[0] : rows;
+    if (!baseResult) throw new Error('اطلاعات رأی این اثر در دسترس نیست.');
+    let guest = { likes:0, dislikes:0, my_vote:0 }, guestEnabled = false;
+    const visitorId = guestId();
+    if (visitorId) {
+      try {
+        const guestRows = await api.rpc('aesh_guest_vote_summary', { p_work_key:key, p_visitor_id:visitorId });
+        const found = Array.isArray(guestRows) ? guestRows[0] : guestRows;
+        if (found) { guest=found; guestEnabled=true; }
+      } catch (error) { console.warn('Guest voting needs setup:', error.message); }
+    }
+    return {
+      likes: Math.max(0,Number(baseResult.likes)||0) + Math.max(0,Number(guest.likes)||0),
+      dislikes: Math.max(0,Number(baseResult.dislikes)||0) + Math.max(0,Number(guest.dislikes)||0),
+      my_vote: api.authenticated() ? Number(baseResult.my_vote)||0 : Number(guest.my_vote)||0,
+      guestEnabled
+    };
+  }
+  function paintCounts(area, counts, key, work) {
     const likes = Number(counts.likes) || 0, dislikes = Number(counts.dislikes) || 0;
     const mine = Number(counts.my_vote) || 0;
+    const allowed = api.authenticated() || counts.guestEnabled;
     area.querySelectorAll('.aesh-vote-buttons,.aesh-vote-message').forEach(x => x.remove());
     const buttons = document.createElement('div'); buttons.className = 'aesh-vote-buttons';
     for (const [vote, label, icon, count] of [[1, 'لایک', 'fa-thumbs-up', likes], [-1, 'دیسلایک', 'fa-thumbs-down', dislikes]]) {
@@ -108,20 +150,23 @@
       button.type = 'button'; button.className = 'aesh-vote-button';
       button.dataset.v = String(vote);
       button.setAttribute('aria-pressed', String(mine === vote));
+      button.disabled = !allowed;
       button.innerHTML = '<i class="fas ' + icon + '" aria-hidden="true"></i><span>' + fa(count) + ' ' + label + '</span>';
       buttons.appendChild(button);
       button.addEventListener('click', async () => {
-        if (!api.authenticated()) {
-          window.location.assign(membersUrl);
-          return;
-        }
+        if (!allowed) return;
         for (const x of buttons.querySelectorAll('button')) x.disabled = true;
         try {
-          const next = await api.rpc('aesh_set_vote', { p_work_key: key, p_vote: mine === vote ? 0 : vote }, true);
+          const nextVote = mine === vote ? 0 : vote;
+          if (api.authenticated()) {
+            await api.rpc('aesh_set_vote', { p_work_key:key, p_vote:nextVote }, true);
+          } else {
+            await api.rpc('aesh_guest_set_vote', {
+              p_work_key:key, p_visitor_id:guestId(), p_vote:nextVote
+            });
+          }
           if (activeKey !== key) return;
-          const result = Array.isArray(next) ? next[0] : next;
-          if (!result) throw new Error('پاسخ دیتابیس معتبر نیست.');
-          paintCounts(area, result, key);
+          await loadVotes(work);
         } catch (error) {
           if (activeKey !== key) return;
           for (const x of buttons.querySelectorAll('button')) x.disabled = false;
@@ -134,15 +179,9 @@
     }
     area.appendChild(buttons);
     const hint = document.createElement('p'); hint.className = 'aesh-vote-message';
-    if (api.authenticated()) hint.textContent = 'رأی شما در دیتابیس ذخیره می‌شود. برای تغییر یا حذف، دوباره روی همان گزینه بزنید.';
-    else {
-      hint.textContent = 'برای ثبت رأی، ';
-      const link = document.createElement('a');
-      link.href = membersUrl; link.textContent = 'با حساب تأییدشده انجمن وارد شوید';
-      link.addEventListener('click', event => event.stopPropagation());
-      hint.appendChild(link);
-      hint.appendChild(document.createTextNode('. مشاهده تعداد رأی‌ها برای همه آزاد است.'));
-    }
+    if (!allowed) hint.textContent = 'رأی مهمان هنوز در پایگاه داده فعال نشده است؛ مدیر باید فایل SQL نسخه جدید را در Supabase اجرا کند.';
+    else if (api.authenticated()) hint.textContent = 'رأی شما ذخیره می‌شود. برای تغییر یا حذف رأی، دوباره روی همان گزینه بزنید.';
+    else hint.textContent = 'بدون ورود هم می‌توانید لایک یا دیسلایک کنید. رأی مهمان برای همین مرورگر ذخیره می‌شود و با پاک کردن اطلاعات مرورگر ممکن است شناسه رأی تغییر کند.';
     area.appendChild(hint);
   }
   async function loadVotes(work) {
@@ -152,17 +191,16 @@
     const area = renderVoteArea(key);
     if (!area || !api || !api.configured()) return;
     try {
-      const rows = await api.rpc('aesh_vote_summary', { p_work_key: key });
+      const result = await combinedVotes(key);
       if (key !== activeKey || ownSeq !== seq) return;
-      const result = Array.isArray(rows) ? rows[0] : rows;
-      if (!result) throw new Error('این اثر هنوز در فهرست رأی‌گیری ثبت نشده است.');
-      paintCounts(area, result, key);
+      paintCounts(area, result, key, work);
     } catch (error) {
       if (key !== activeKey || ownSeq !== seq) return;
-      const node = area.querySelector('.aesh-vote-message') || document.createElement('p');
-      node.textContent = 'آمار رأی در دسترس نیست: ' + error.message;
-      node.className = 'aesh-vote-message aesh-vote-error';
-      area.appendChild(node);
+      area.replaceChildren();
+      const message = document.createElement('p');
+      message.textContent = 'آمار رأی در دسترس نیست: ' + error.message;
+      message.className = 'aesh-vote-message aesh-vote-error';
+      area.appendChild(message);
     }
   }
   function init() {

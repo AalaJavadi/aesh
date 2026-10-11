@@ -1,4 +1,4 @@
-/* AESH v3.23: Supabase Auth + protected RPC adapter.
+/* AESH v3.25: Supabase Auth + protected RPC adapter.
    Passwords never appear in site files. Refresh sessions persist locally until logout.
    Persisted tokens can be read by JavaScript on this origin; keep the site's CSP tight.
 */
@@ -82,7 +82,9 @@
       if (response.status === 401 && privateCall && !retry && authenticated()) {
         await renew(); return call(path, options, privateCall, true);
       }
-      throw new Error(alertError(result, response.status));
+      const error = new Error(alertError(result, response.status));
+      error.httpStatus = response.status;
+      throw error;
     }
     return result;
   }
@@ -159,6 +161,37 @@
     }
     return validImageTypes[file.type];
   }
+  // New object uploads use the smallest necessary request header set. The previous
+  // cache-control and x-upsert:false headers were redundant, increased the CORS
+  // preflight header set, and could be rejected by some Storage gateways.
+  // Repeating a POST after a transport failure is safe here because every work ID
+  // is a fresh UUID; if the first POST succeeded but its response was lost,
+  // Supabase replies "already exists" and we can continue with that object.
+  function isTransportFailure(error) {
+    return error instanceof TypeError || /failed to fetch|networkerror|load failed|network request failed/i.test(String(error && error.message || ''));
+  }
+  async function uploadNewObject(bucket, path, blob) {
+    let uncertainFirstAttempt = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await call('/storage/v1/object/' + bucket + '/' + path, {
+          method: 'POST', body: blob,
+          headers: { 'Content-Type': blob.type }
+        }, true);
+        return;
+      } catch (error) {
+        const message = String(error && error.message || '');
+        if (uncertainFirstAttempt && (error.httpStatus === 400 || error.httpStatus === 409)
+            && /already exists|asset already exists|duplicate/i.test(message)) return;
+        if (!isTransportFailure(error)) throw error;
+        if (attempt === 2) {
+          throw new Error('ارتباط با فضای ذخیره‌سازی تصاویر بعد از چند تلاش برقرار نشد. درخواست به سرور نرسیده یا پاسخ آن توسط شبکه یا مرورگر مسدود شده است.');
+        }
+        uncertainFirstAttempt = true;
+        await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 500 : 1100));
+      }
+    }
+  }
   async function uploadWorkImage(file, id, isOwner) {
     const extension = canUploadImage(file, isOwner);
     if (!uuidShape.test(id)) throw new Error('شناسه آپلود معتبر نیست.');
@@ -166,10 +199,7 @@
     if (!person || (isOwner ? person.role !== 'owner' : !['teacher','student'].includes(person.role))) throw new Error('مجوز آپلود برای این حساب وجود ندارد.');
     const bucket = isOwner ? 'aesh-owner-works' : 'aesh-member-works';
     const path = person.id + '/' + id + '.' + extension;
-    await call('/storage/v1/object/' + bucket + '/' + path, {
-      method: 'POST', body: file,
-      headers: { 'Content-Type': file.type, 'cache-control': '604800', 'x-upsert': 'false' }
-    }, true);
+    await uploadNewObject(bucket, path, file);
     return path;
   }
   async function uploadWorkThumb(blob, id) {
@@ -179,10 +209,7 @@
     const person = await myProfile();
     if (!person) throw new Error('حساب مجاز پیدا نشد.');
     const path = person.id + '/' + id + '.webp';
-    await call('/storage/v1/object/aesh-work-thumbs/' + path, {
-      method: 'POST', body: blob,
-      headers: { 'Content-Type': 'image/webp', 'cache-control': '604800', 'x-upsert': 'false' }
-    }, true);
+    await uploadNewObject('aesh-work-thumbs', path, blob);
     return path;
   }
   const objPath = /^[0-9a-f]{8}-[0-9a-f-]{27,}\/([0-9a-f-]{36})\.(png|jpg|webp)$/i;

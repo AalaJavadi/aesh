@@ -1,0 +1,40 @@
+/* AESH multi-page routing: only the placement of former dialog details changes.
+   All original card styles, colors, typography and responsive rules are kept intact. */
+.aesh-detail-page{width:min(1090px,calc(100% - 32px));margin:38px auto 64px;min-height:40vh}
+.aesh-detail-page>.profile-dialog,
+.aesh-detail-page>.portfolio-dialog,
+.aesh-detail-page>.featured-dialog{
+  width:100%!important;max-width:100%!important;max-height:none!important;
+  height:auto!important;overflow:visible!important;margin:0 auto;
+  animation:none!important;
+}
+.aesh-detail-page>.profile-dialog{width:min(920px,100%)!important}
+.aesh-detail-page>.featured-dialog{width:min(980px,100%)!important}
+.aesh-detail-page>.portfolio-dialog{width:min(1050px,100%)!important}
+.aesh-detail-page .profile-close,
+.aesh-detail-page .portfolio-detail-close,
+.aesh-detail-page .featured-view-close{text-decoration:none}
+.aesh-detail-page .portfolio-detail-top{border-radius:30px 30px 0 0}
+.aesh-detail-page .profile-photo{isolation:isolate}
+.aesh-detail-page .portfolio-detail-media img{max-height:none;max-width:100%;height:auto;object-fit:contain}
+.aesh-detail-page .profile-dialog{scrollbar-width:auto}
+.aesh-item-page{padding:55px 0 60px;min-height:50vh}
+.aesh-item-page h1{font-size:clamp(1.55rem,4vw,2.25rem);font-weight:900;margin:0 0 26px;color:var(--text)}
+.aesh-item-page p{line-height:2;color:var(--muted);margin:0 0 24px}
+.aesh-item-original{max-width:700px;margin:0 auto 26px}
+.aesh-item-original .news-card,.aesh-item-original .course-card,.aesh-item-original .event-card{width:100%;cursor:default}
+/* No offscreen card or separate view is hidden in the DOM. Gallery still reveals its 12-item initial batch. */
+#portfolioGrid .portfolio-card[data-more-hidden="true"]{display:none}
+#portfolioGrid .portfolio-card[data-filter-hidden="true"]{display:none!important}
+#portfolioGrid .portfolio-card .portfolio-loading{background:linear-gradient(145deg,var(--i100),var(--g50))}
+#portfolioGrid .portfolio-card-media img{height:100%;width:100%;object-fit:contain}
+@media(max-width:760px){
+ .aesh-detail-page{width:100%;margin:0 auto 32px;padding:12px 9px 0}
+ .aesh-detail-page>.profile-dialog,.aesh-detail-page>.portfolio-dialog,.aesh-detail-page>.featured-dialog{width:100%!important;max-height:none!important;height:auto!important;overflow:visible!important;border-radius:24px!important}
+ .aesh-detail-page .profile-photo{border-radius:22px 22px 0 0}
+ .aesh-detail-page .profile-main{margin-bottom:0}
+ .aesh-detail-page .portfolio-dialog{padding-bottom:0}
+ .aesh-detail-page .portfolio-detail-media img{max-height:none}
+ .aesh-detail-page .featured-dialog{display:block}
+ .aesh-item-page{padding:35px 0 45px}
+}

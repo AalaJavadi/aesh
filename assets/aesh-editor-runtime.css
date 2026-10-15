@@ -1,0 +1,5 @@
+/* Only editor-specific positioning; the approved public design is untouched. */
+#editPanel.show{display:flex!important;left:24px!important;right:auto!important;inset-inline-start:auto!important;inset-inline-end:24px!important;width:min(360px,calc(100vw - 48px));max-height:min(78vh,720px);overflow:auto;z-index:2400!important}
+#editBtn{display:none!important}
+#loginModal.show,#reauthModal.show,#pwModal.show{z-index:2700!important}
+@media(max-width:600px){#editPanel.show{left:8px!important;right:auto!important;inset-inline-start:auto!important;inset-inline-end:8px!important;width:calc(100vw - 16px)!important;max-height:74dvh}}

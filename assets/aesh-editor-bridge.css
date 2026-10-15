@@ -1,0 +1,22 @@
+/* Applied only to the editor iframe opened on Ctrl+Shift+E. Public pages unchanged. */
+body.aesh-inline-panel{background:transparent!important;min-height:0!important;overflow:hidden!important;}
+body.aesh-inline-panel > :not(#editPanel):not(.modal):not(.toast):not(#aesh-inline-return):not(script):not(style):not(link){display:none!important;}
+body.aesh-inline-panel #editPanel.show{
+ display:flex!important;position:fixed!important;inset:0!important;width:100%!important;
+ height:100%!important;max-height:none!important;min-height:0!important;box-sizing:border-box;
+ overflow-y:auto!important;margin:0!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;padding:12px!important;
+}
+body.aesh-inline-panel.aesh-inline-modal #editPanel{display:none!important;}
+body.aesh-inline-panel .modal{z-index:3500!important;}
+#aesh-inline-controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+#aesh-inline-controls button,#aesh-inline-return{
+ font:inherit;font-weight:700;font-size:12px;cursor:pointer;min-height:34px;
+ border:1px solid var(--border2,#dedede);border-radius:9px;padding:5px 10px;
+ background:var(--surface,#fff);color:var(--text,#222);
+}
+#aesh-inline-workspace{flex:1;}
+#aesh-inline-hide{flex:0 0 auto;}
+#aesh-inline-return{position:fixed;bottom:12px;left:12px;right:auto;z-index:3000;box-shadow:0 4px 16px #0003;}
+#aesh-inline-return[hidden]{display:none!important;}
+body:not(.aesh-inline-panel) #aesh-inline-return{display:block;}

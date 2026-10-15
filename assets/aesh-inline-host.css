@@ -1,0 +1,7 @@
+/* Loaded only when the editor shortcut is requested, compatible with the members CSP. */
+#aesh-inline-host{position:fixed;z-index:2900;left:12px;bottom:12px;right:auto;width:min(390px,calc(100vw - 24px));height:min(78dvh,730px);max-height:calc(100dvh - 24px);overflow:hidden;border-radius:18px;box-shadow:0 12px 55px #0004;background:var(--surface,#fff);direction:rtl;}
+ #aesh-inline-host[hidden]{display:none!important;}
+ #aesh-inline-host[data-mode="modal"],#aesh-inline-host[data-mode="workspace"]{inset:0!important;width:100vw!important;height:100dvh!important;max-height:none!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;}
+ #aesh-inline-host[data-mode="workspace"]{background:var(--bg,#fff)!important;}
+ #aesh-inline-host iframe{display:block;border:0;width:100%;height:100%;background:transparent;}
+ @media(max-width:600px){#aesh-inline-host{left:5px;bottom:5px;width:calc(100vw - 10px);height:min(75dvh,700px);max-height:calc(100dvh - 10px);border-radius:15px;}}

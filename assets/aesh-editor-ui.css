@@ -1,0 +1,32 @@
+
+/* Visible, complete classic admin controls; normal visitors see none of this. */
+.edit-panel.aesh-editor-complete {z-index:1700;position:fixed;bottom:20px;right:20px;left:auto;inset-inline-end:auto;
+  width:min(342px,calc(100vw - 32px));max-height:min(84dvh,740px);overflow:auto;overscroll-behavior:contain;
+  padding:14px;background:var(--surface);border:1px solid var(--border2);border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.20);gap:9px;}
+.edit-panel.aesh-editor-complete .ep-head {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 5px 5px;}
+.edit-panel.aesh-editor-complete .ep-head strong{font-size:1.02rem;color:var(--text);}
+.edit-panel.aesh-editor-complete .ep-head small{display:block;color:var(--muted);font-size:.72rem;line-height:1.7;font-weight:500;}
+.edit-panel.aesh-editor-complete .ep-state {padding:5px 8px;background:rgba(245,179,1,.12);color:var(--text);font-size:.72rem;border-radius:999px;white-space:nowrap;}
+.edit-panel.aesh-editor-complete .ep-line {height:1px;margin:3px 0;background:var(--border);}
+.edit-panel.aesh-editor-complete .ep-btn {border:none;cursor:pointer;min-height:43px;justify-content:flex-start;width:100%;text-align:right;
+  border-radius:12px;font-family:inherit;font-size:.83rem;padding:10px 13px;line-height:1.7;}
+.edit-panel.aesh-editor-complete .ep-btn i{flex:0 0 20px;}
+.edit-panel.aesh-editor-complete .ep-git{background:linear-gradient(135deg,#047857,#065f46);color:white;}
+.edit-panel.aesh-editor-complete .ep-draft{background:linear-gradient(135deg,#b67e0c,#8b5a09);color:white;}
+.edit-panel.aesh-editor-complete .ep-recall{background:var(--i100);color:var(--i900);}
+.edit-panel.aesh-editor-complete .ep-preview{background:#2d496d;color:white;}
+.edit-panel.aesh-editor-complete .ep-more{background:var(--i100);color:var(--i900);}
+.edit-panel.aesh-editor-complete .ep-exit{background:#c0392b;color:white;}
+.edit-panel.aesh-editor-complete .ep-note{font-size:.72rem;max-width:none;line-height:1.7;padding:0 5px;}
+.edit-panel.aesh-editor-complete #editorDraftStamp {font-size:.72rem;color:var(--muted);text-align:right;min-height:18px;}
+.edit-panel.aesh-editor-complete .ep-more-wrap{display:grid;gap:8px;}
+.edit-panel.aesh-editor-complete details > summary{cursor:pointer;list-style:none;border:1px solid var(--border);border-radius:12px;
+ padding:10px 13px;font-weight:700;font-size:.81rem;color:var(--text);display:flex;justify-content:space-between;align-items:center;}
+.edit-panel.aesh-editor-complete details > summary::-webkit-details-marker{display:none;}
+.edit-panel.aesh-editor-complete details[open]>summary {margin-bottom:9px;}
+#editorPreviewReturn {display:none;position:fixed;bottom:24px;right:24px;z-index:1800;
+ font-family:inherit;font-size:.9rem;font-weight:800;border:0;border-radius:14px;padding:14px 20px;
+ background:var(--g500);color:var(--i900);box-shadow:0 10px 34px rgba(0,0,0,.22);cursor:pointer;}
+#editorPreviewReturn.show{display:block;}
+@media(max-width:600px){.edit-panel.aesh-editor-complete{bottom:8px;right:8px;width:calc(100vw - 16px);max-height:74dvh;padding:12px;}
+ .edit-panel.aesh-editor-complete .ep-btn{min-height:44px;font-size:.83rem;}#editorPreviewReturn{bottom:12px;right:12px;}}

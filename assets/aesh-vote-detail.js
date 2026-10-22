@@ -3,7 +3,8 @@
 'use strict';
 const api=window.AESHCore,host=document.getElementById('portfolioDetailActions');
 if(!host)return;
-const key='legacy:'+String(document.body.dataset.workId||'');
+const source=String(document.body.getAttribute('data-aesh-work-id')||'').trim();
+const key=source.startsWith('cloud:')||source.startsWith('legacy:')?source:'legacy:'+source;
 let guest='';
 const el=document.createElement('section');el.className='aesh-vote-block';el.id='aeshVoteBlock';el.setAttribute('aria-label','لایک و دیسلایک نمونه‌کار');host.appendChild(el);
 function message(t){el.replaceChildren();const h=document.createElement('h3');h.textContent='نظرت درباره این نمونه‌کار چیه؟';el.appendChild(h);const p=document.createElement('p');p.className='aesh-vote-message';p.textContent=t;el.appendChild(p);}
@@ -12,7 +13,8 @@ function guestId(){try{const v=localStorage.getItem('aesh:guest-voter:v323');if(
 const rowFirst=r=>Array.isArray(r)?r[0]:r;
 async function counts(){const real=rowFirst(await api.rpc('aesh_vote_summary',{p_work_key:key}));if(!real)throw Error('آمار رأی در دسترس نیست');let second={likes:0,dislikes:0,my_vote:0},guestEnabled=false;const id=guestId();if(id)try{const r=rowFirst(await api.rpc('aesh_guest_vote_summary',{p_work_key:key,p_visitor_id:id}));if(r){second=r;guestEnabled=true;}}catch(e){console.warn('AESH guest votes unavailable',e.message)}
  return {likes:Math.max(0,Number(real.likes)||0)+Math.max(0,Number(second.likes)||0),dislikes:Math.max(0,Number(real.dislikes)||0)+Math.max(0,Number(second.dislikes)||0),my_vote:api.authenticated()?Number(real.my_vote)||0:Number(second.my_vote)||0,guestEnabled};}
-async function render(){if(!api||!api.configured()){message('لایک و دیسلایک پس از اتصال دیتابیس فعال می‌شوند؛ هیچ شمارش ساختگی نمایش داده نمی‌شود.');return;}
+async function render(){if(!source){message('شناسه پایدار این اثر در صفحه ثبت نشده است؛ رأی‌گیری فعال نیست.');return;}
+ if(!api||!api.configured()){message('لایک و دیسلایک پس از اتصال دیتابیس فعال می‌شوند؛ هیچ شمارش ساختگی نمایش داده نمی‌شود.');return;}
  message('در حال دریافت تعداد رأی‌ها…');try{const c=await counts();el.replaceChildren();const h=document.createElement('h3');h.textContent='نظرت درباره این نمونه‌کار چیه؟';el.appendChild(h);
  const buttons=document.createElement('div');buttons.className='aesh-vote-buttons';const allowed=api.authenticated()||c.guestEnabled;
  for(const [vote,label,icon,num] of [[1,'لایک','fa-thumbs-up',c.likes],[-1,'دیسلایک','fa-thumbs-down',c.dislikes]]){

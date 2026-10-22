@@ -134,7 +134,7 @@
   }
   async function uploadAvatar(blob) {
     const m = await myProfile(true);
-    if (!m || !blob || blob.type !== 'image/webp' || blob.size < 1 || blob.size > 249999) throw new Error('عکس پروفایل باید WebP و کمتر از ۲۵۰ کیلوبایت باشد.');
+    if (!m || !blob || blob.type !== 'image/webp' || blob.size < 1 || blob.size >= 100000) throw new Error('عکس پروفایل باید WebP و کمتر از ۱۰۰ کیلوبایت باشد.');
     const path = m.id + '/avatar.webp';
     await call('/storage/v1/object/aesh-avatars/' + path, {
       method: 'POST', body: blob,
@@ -155,9 +155,9 @@
     return s.slice(0,8) + '-' + s.slice(8,12) + '-' + s.slice(12,16) + '-' + s.slice(16,20) + '-' + s.slice(20);
   }
   function canUploadImage(file, isOwner) {
-    const limit = isOwner ? 12 * 1024 * 1024 : 400 * 1024;
+    const limit = 99999;
     if (!file || !validImageTypes[file.type] || !file.size || file.size > limit) {
-      throw new Error(isOwner ? 'تصویر باید JPG، PNG یا WebP با حجم حداکثر ۱۲ مگابایت باشد.' : 'تصویر باید JPG، PNG یا WebP با حجم حداکثر ۴۰۰ کیلوبایت باشد.');
+      throw new Error('تصویر آپلودی نهایی باید JPG، PNG یا WebP و کمتر از ۱۰۰٬۰۰۰ بایت باشد.');
     }
     return validImageTypes[file.type];
   }
@@ -170,7 +170,17 @@
   function isTransportFailure(error) {
     return error instanceof TypeError || /failed to fetch|networkerror|load failed|network request failed/i.test(String(error && error.message || ''));
   }
+  let privacyPreflightAt = 0;
+  async function requirePrivateWorkBuckets() {
+    if (Date.now() - privacyPreflightAt < 30000) return;
+    const result = await rpc('aesh_5_work_buckets_private', {}, true);
+    if (result !== true) throw new Error('ارسال تصویر تا تکمیل تنظیمات امنیتی Storage آزمایشی متوقف است.');
+    privacyPreflightAt = Date.now();
+  }
   async function uploadNewObject(bucket, path, blob) {
+    if (['aesh-member-works','aesh-owner-works','aesh-work-thumbs'].includes(bucket)) {
+      await requirePrivateWorkBuckets();
+    }
     let uncertainFirstAttempt = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -203,8 +213,8 @@
     return path;
   }
   async function uploadWorkThumb(blob, id) {
-    if (!uuidShape.test(id) || !blob || blob.type !== 'image/webp' || !blob.size || blob.size > 150 * 1024) {
-      throw new Error('تصویر بندانگشتی باید WebP و حداکثر ۱۵۰ کیلوبایت باشد.');
+    if (!uuidShape.test(id) || !blob || blob.type !== 'image/webp' || !blob.size || blob.size >= 100000) {
+      throw new Error('تصویر بندانگشتی باید WebP و کمتر از ۱۰۰ کیلوبایت باشد.');
     }
     const person = await myProfile();
     if (!person) throw new Error('حساب مجاز پیدا نشد.');
@@ -217,7 +227,10 @@
     if (!enabled || !['aesh-member-works','aesh-owner-works','aesh-work-thumbs'].includes(bucket)) return '';
     if (!objPath.test(String(path || ''))) return '';
     if (bucket === 'aesh-work-thumbs' && !String(path).endsWith('.webp')) return '';
-    return url + '/storage/v1/object/public/' + bucket + '/' + String(path).split('/').map(encodeURIComponent).join('/');
+    // Authenticated Storage URLs cannot serve <img> tags with a bearer header.
+    // The public Edge gateway checks the published-works RPC BEFORE proxying bytes;
+    // pending objects have no public URL, even if their UUID is known.
+    return url + '/functions/v1/aesh-approved-media/' + bucket + '/' + String(path).split('/').map(encodeURIComponent).join('/');
   }
   async function publicWorks() { return rpc('aesh_public_works'); }
   async function myWorks() { return rpc('aesh_my_works', {}, true); }
@@ -235,10 +248,52 @@
     if (!uuidShape.test(id)) throw new Error('شناسه اثر معتبر نیست.');
     return rpc('aesh_owner_manage_work', { p_work_id:id,p_status:status,p_slug:slug || null }, true);
   }
+  // Review media must be fetched WITH the authenticated manager token; never
+  // expose an unauthenticated signed URL for a pending submission.
+  async function reviewImage(item,small=false) {
+    const person=await myProfile(true);
+    if(!person||person.role!=='owner')throw new Error('فقط مدیر مجاز می‌تواند تصویر را ببیند.');
+    const bucket=small?'aesh-work-thumbs':String(item.bucket_id||'');
+    const path=String(small?item.thumb_path:item.object_path||'');
+    if(!['aesh-member-works','aesh-owner-works','aesh-work-thumbs'].includes(bucket)||!objPath.test(path))
+      throw new Error('مسیر تصویر برای پیش‌نمایش نامعتبر است.');
+    if(small&&!path.endsWith('.webp'))throw new Error('نوع تصویر بندانگشتی معتبر نیست.');
+    if(session.expires_at<Math.floor(Date.now()/1000)+90)await renew();
+    const res=await fetch(url+'/storage/v1/object/authenticated/'+bucket+'/'+path.split('/').map(encodeURIComponent).join('/'),
+      {headers:{'apikey':publicKey,'Authorization':'Bearer '+session.access_token},cache:'no-store'});
+    if(!res.ok)throw new Error('سرور به تصویر مجوز نداد (HTTP '+res.status+'). سیاست Storage باید بررسی شود.');
+    const blob=await res.blob();
+    if(!['image/webp','image/jpeg','image/png'].includes(blob.type)||!blob.size||blob.size>20*1024*1024)
+      throw new Error('محتوای تصویر معتبر نیست.');
+    return blob;
+  }
+  async function publicDirectory(){return rpc('aesh_public_directory');}
+  async function ownerDirectory(){return rpc('aesh_owner_directory',{},true);}
+  async function ownerSaveDirectory(values){return rpc('aesh_owner_save_directory',values,true);}
+  async function uploadDirectoryPhoto(blob,identifier){
+    const person=await myProfile(true);
+    if(!person||person.role!=='owner')throw new Error('فقط مدیر می‌تواند تصویر عضو جدید را بارگذاری کند.');
+    if(!uuidShape.test(String(identifier))||!blob||blob.type!=='image/webp'||blob.size>=100000||!blob.size)
+      throw new Error('تصویر نهایی باید WebP و کمتر از ۱۰۰٬۰۰۰ بایت باشد.');
+    // No overwrite: a fresh immutable UUID per upload needs only Storage INSERT.
+    // The directory record changes its image_path only AFTER this POST succeeds.
+    const path=newWorkId()+'.webp';
+    await uploadNewObject('aesh-directory',path,blob);
+    return path;
+  }
+  function publicDirectoryPhoto(path){
+    return enabled&&uuidShape.test(String(path||'').replace(/\.webp$/,''))&&String(path).endsWith('.webp')?
+     url+'/storage/v1/object/public/aesh-directory/'+encodeURIComponent(path):'';
+  }
+  async function submitReview(name,body,honey=''){return rpc('aesh_submit_review',{p_display_name:name,p_body:body,p_website:honey});}
+  async function publicReviews(){return rpc('aesh_public_reviews');}
+  async function ownerReviews(){return rpc('aesh_owner_reviews',{},true);}
+  async function moderateReview(id,status){return rpc('aesh_owner_moderate_review',{p_review_id:id,p_status:status},true);}
   window.AESHCore = Object.freeze({
     configured, needSetup, authenticated, login, logout, myProfile, saveBioAndAvatar,
     publicAvatar, uploadAvatar, rpc, base: url,
     newWorkId, canUploadImage, uploadWorkImage, uploadWorkThumb, publicWorkMedia,
-    publicWorks, myWorks, ownerQueue, submitMyWork, ownerSubmitWork, ownerManageWork
+    publicWorks, myWorks, ownerQueue, submitMyWork, ownerSubmitWork, ownerManageWork,
+    reviewImage,publicDirectory,ownerDirectory,ownerSaveDirectory,uploadDirectoryPhoto,publicDirectoryPhoto,submitReview,publicReviews,ownerReviews,moderateReview
   });
 })();

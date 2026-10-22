@@ -214,3 +214,20 @@ svg{flex:none}
 .review-work-link{font-size:.79rem;color:var(--g700);font-weight:800;display:inline-flex;margin:6px 0 9px;overflow-wrap:anywhere}
 @media(max-width:520px){.header-in{padding-top:11px;padding-bottom:11px;min-height:65px}.member-chip{padding:5px 8px;font-size:.64rem}.hero{padding:28px 13px 72px}.hero h1{font-size:1.8rem}.hero p{font-size:.82rem}.workspace{margin-top:-34px;padding-bottom:35px}.auth{padding:25px 20px}.login-form{margin-top:19px}}
 @media(max-width:380px){.member-chip{display:none}}
+
+/* AESH 5: final-image confirmation and protected approval previews */
+.quality-confirm{display:flex;align-items:center;gap:8px;margin:10px 0;padding:11px;border-radius:12px;border:1px solid #dbac35;color:inherit;font-size:.92rem}
+.quality-confirm[hidden]{display:none!important}
+.aesh-review-picture{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 0}
+.aesh-review-picture img{max-width:160px;max-height:130px;object-fit:contain;border-radius:12px}
+.aesh-review-picture p{flex:1 1 150px}
+.aesh-image-dialog{max-width:min(96vw,1050px);max-height:93vh;overflow:auto;border-radius:20px;border:2px solid #d9ab35;padding:16px;background:#fff;color:#151515}
+.aesh-image-dialog::backdrop{background:rgba(0,0,0,.85)}
+.aesh-image-dialog img{display:block;max-width:100%;max-height:75vh;object-fit:contain;margin:10px auto}
+
+.aesh-admin-list{display:grid;gap:12px;margin:16px 0}
+.aesh-admin-list-row{border:1px solid #d8d4c7;border-radius:12px;padding:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.aesh-admin-list-row p{flex:1 1 100%;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.aesh-admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.aesh-form-split{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.aesh-admin-avatar{max-width:200px;max-height:180px;border-radius:12px;object-fit:contain;margin:10px 0}

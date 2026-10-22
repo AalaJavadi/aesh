@@ -1,3 +1,5 @@
+# SUPERSEDED: READ AESH_REVIEW_FIX_DEPLOYMENT_20261020.md FIRST. THIS HISTORICAL NOTE MAY BE OUTDATED.
+
 AESH v3.12 - Direct Route Cache Fix
 
 Upload/replace ALL contents of this folder in the ROOT of the GitHub Pages repository.

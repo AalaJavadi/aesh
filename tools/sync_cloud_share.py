@@ -10,7 +10,7 @@ import argparse
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 import json
@@ -66,30 +66,30 @@ def clean_row(row,host):
     if not THUMB_RE.fullmatch(thumb) or not WORK_IMAGE_RE.fullmatch(original):return None
     # aesh_public_works exposes PUBLISHED works only. Extra filtering is safe if status is returned.
     if row.get('status') is not None and row['status']!='published':return None
-    img=host+'/storage/v1/object/public/aesh-work-thumbs/'+quote(thumb,safe='/')
+    img=host+'/functions/v1/aesh-approved-media/aesh-work-thumbs/'+quote(thumb,safe='/')
     path='work/'+slug+'/index.html'
-    return {'path':path,'title':title,'slug':slug,'image':img,
+    return {'path':path,'id':wid,'raw':row,'title':title,'slug':slug,'image':img,
             'owner':str(row.get('owner_name') or '').strip()[:130],
             'desc':str(row.get('description') or '').strip()[:280]}
 
-def document(row):
-    url='https://aesh.ir/work/'+quote(row['slug'],safe='')+'/'
-    title=(row['title']+' | '+row['owner']+' | AESH') if row['owner'] else row['title']+' | AESH'
-    desc=(row['owner']+' — '+row['desc']).strip(' —') or 'نمونه‌کار منتشرشده انجمن ادیتوران شایسته'
-    e=lambda txt:escape(str(txt),quote=True)
-    return f'''<!doctype html>
-<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{e(title)}</title><meta name="description" content="{e(desc)}"><meta name="robots" content="index,follow,max-image-preview:large">
-<link rel="canonical" href="{e(url)}"><meta property="og:locale" content="fa_IR"><meta property="og:site_name" content="انجمن ادیتوران شایسته">
-<meta property="og:type" content="article"><meta property="og:url" content="{e(url)}"><meta property="og:title" content="{e(title)}">
-<meta property="og:description" content="{e(desc)}"><meta property="og:image" content="{e(row['image'])}">
-<meta property="og:image:alt" content="{e('تصویر نمونه‌کار '+row['title'])}"><meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(desc)}"><meta name="twitter:image" content="{e(row['image'])}">
-<style>body{{background:#fbfaf6;color:#0f172a;font-family:Tahoma,system-ui,sans-serif;direction:rtl}}article{{max-width:850px;margin:45px auto;padding:20px;background:#fff;border:1px solid #e8e5db;border-radius:18px;text-align:center}}img{{max-width:100%;max-height:65vh;object-fit:contain;border-radius:12px}}a{{color:#a17600}}</style>
-</head><body><article><h1>{e(row['title'])}</h1><p>{e(row['owner'])}</p><img src="{e(row['image'])}" alt="{e(row['title'])}"><p><a href="https://aesh.ir/portfolio/">مشاهده نمونه‌کارها در انجمن</a></p></article>
-<script>(async function(){{try{{var gh=/\\.github\\.io$/i.test(location.hostname),base=gh?'/aesh/':'/',r=await fetch(base+'index.html?__aesh_reload='+Date.now(),{{cache:'no-store'}});if(!r.ok)throw Error('main site');var h=await r.text();document.open();document.write(h);document.close();}}catch(e){{console.warn(e);}}}})();</script>
-{MARKER}</body></html>
-'''
+def document(row,host):
+    """Generate a genuine self-contained artwork page (NEVER document.write/index fetch)."""
+    from bs4 import BeautifulSoup
+    import build_aesh5 as m
+    legacy=row['raw']
+    work={'id':'cloud-'+row['id'],'_aesh_cloud':True,'_aesh_key':'cloud:'+row['id'],
+      'slug':row['slug'],'title':row['title'],'ownerName':row['owner'],
+      'ownerType':legacy.get('owner_role'),'ownerSlug':legacy.get('owner_slug'),
+      'desc':legacy.get('description'),'image':host+'/functions/v1/aesh-approved-media/'+legacy['bucket_id']+'/'+quote(legacy['object_path'],safe='/'),
+      'thumb':row['image'],'fullWidth':legacy.get('full_width') or legacy.get('width') or 0,
+      'fullHeight':legacy.get('full_height') or legacy.get('height') or 0}
+    base=BeautifulSoup(m.SOURCE_TEMPLATE.read_text('utf-8'),'html.parser')
+    content=m.load_json_from_page(m.ROOT/'tools/aesh5-source.html')
+    body=m.work_detail(base,work,content)
+    route='/work/'+row['slug']+'/'
+    title=row['title']+' | '+row['owner']+' | AESH'
+    page=m.base_html(base,body,route,'work',(title,row['desc'],row['image']),content,None,work)
+    return page.replace('</body>',MARKER+'</body>')
 
 def sync_public_profile_images(root:Path, profiles, host:str):
     # A fresh avatar is only used for THAT SAME teacher/student's individual SEO page.
@@ -108,67 +108,263 @@ def sync_public_profile_images(root:Path, profiles, host:str):
         if row.get('updated_at'):
             image+='?v='+quote(str(row['updated_at']),safe='')
         content=page.read_text('utf-8')
+        from bs4 import BeautifulSoup
+        doc=BeautifulSoup(content,'html.parser')
         for prop in ('og:image','twitter:image'):
-            pattern=r'(<meta '+('name' if prop.startswith('twitter') else 'property')+'="'+prop+r'" content=")[^"]*(">)'
-            content=re.sub(pattern,lambda m:m.group(1)+escape(image,quote=True)+m.group(2),content,count=1)
-        page.write_text(content,'utf-8')
+            attribute='name' if prop.startswith('twitter') else 'property'
+            meta=doc.find('meta',attrs={attribute:prop})
+            if meta:meta['content']=image
+        fresh='<!doctype html>\n'+str(doc.html) if doc.html else content
+        if fresh!=content:page.write_text(fresh,'utf-8')
         applied+=1
     print('Updated public profile share images:',applied)
 
+# Old v5 builders wrote Cloud pages straight into the ZIP without this sync
+# script's marker or state JSON. Discover them from a strictly validated UUID
+# on a WORK detail page, rather than trusting filenames, titles or old state.
+CLOUD_BODY = re.compile(
+    rf'<body\b[^>]*\bdata-aesh-work-id\s*=\s*[\'\"]cloud:({UUID})[\'\"]',
+    re.IGNORECASE | re.DOTALL,
+)
+STATE_PATH = re.compile(r'^work/[^/]+/index\.html$')
+
+
 def read_state(root):
     try:
-        data=json.loads((root/STATE).read_text('utf-8'))
-        return {s for s in data.get('generated',[]) if isinstance(s,str)}
-    except (FileNotFoundError,ValueError):return set()
+        data = json.loads((root / STATE).read_text('utf-8'))
+        if not isinstance(data, dict) or not isinstance(data.get('generated', []), list):
+            raise ValueError('Bad generated pages state')
+        return {p for p in data['generated'] if isinstance(p, str) and STATE_PATH.fullmatch(p)}
+    except FileNotFoundError:
+        return set()
+
+
+def page_cloud_uuid(html):
+    match = CLOUD_BODY.search(html)
+    return match.group(1).lower() if match else None
+
+
+def discover_cloud_pages(root):
+    """Only genuine Cloud work HTML; static/legacy work pages never qualify."""
+    result = {}
+    for file in (root / 'work').glob('*/index.html'):
+        text = file.read_text('utf-8')
+        wid = page_cloud_uuid(text)
+        if wid:
+            result[file.relative_to(root).as_posix()] = wid
+    return result
+
+
+# Older builders emitted thin SEO shells with a public Supabase work thumbnail,
+# a document.write(index.html) loader, and NO trustworthy Cloud work UUID.
+# These are not genuine immutable legacy/studio work pages. A past ZIP overlay
+# can bring back a revoked shell even when it is absent from sitemap/state.
+# Recognize ONLY this exact obsolete shape; do not guess from slugs or titles.
+_OBSOLETE_THUMB = re.compile(
+    r'https://[a-z0-9-]+\.supabase\.co/storage/v1/object/public/aesh-work-thumbs/', re.I
+)
+
+
+def is_obsolete_cloud_shell(html):
+    return (not page_cloud_uuid(html)
+            and '<div class="seo-load">' in html
+            and 'document.write(h)' in html
+            and bool(_OBSOLETE_THUMB.search(html)))
+
+
+def discover_obsolete_cloud_shells(root):
+    """Unverified old-format Cloud work shells, NEVER authoritative publication."""
+    return {file.relative_to(root).as_posix()
+            for file in (root / 'work').glob('*/index.html')
+            if is_obsolete_cloud_shell(file.read_text('utf-8'))}
+
+
+def _normalized_url(url):
+    parsed = urlsplit(url)
+    return (parsed.netloc.lower(), unquote(parsed.path).rstrip('/') + '/')
+
+
+def _site_base(root):
+    if (root / '.aesh-test').is_file():
+        return 'https://aesh-test.github.io'
+    cname = root / 'CNAME'
+    if cname.is_file() and cname.read_text('utf-8').strip():
+        return 'https://' + cname.read_text('utf-8').strip().splitlines()[0]
+    return 'https://aesh.ir'
+
+
+def _site_url(root, path):
+    return _site_base(root) + '/' + quote(path.removesuffix('index.html'), safe='/')
+
 
 def write_sitemap(root, add_urls, previous_urls):
-    file=root/'sitemap.xml'
-    if not file.exists():return
-    tree=ET.parse(file)
-    parent=tree.getroot()
-    loc_tag=f'{{{NS}}}loc';last_tag=f'{{{NS}}}lastmod';url_tag=f'{{{NS}}}url'
-    static=[]
-    current_date=datetime.now(timezone.utc).date().isoformat()
+    file = root / 'sitemap.xml'
+    if not file.exists():
+        return
+    tree = ET.parse(file)
+    parent = tree.getroot()
+    loc_tag = f'{{{NS}}}loc'
+    last_tag = f'{{{NS}}}lastmod'
+    url_tag = f'{{{NS}}}url'
+    removed = {_normalized_url(url) for url in previous_urls}
+    added = {_normalized_url(url) for url in add_urls}
+    static = []
+    current_date = datetime.now(timezone.utc).date().isoformat()
     for node in list(parent):
-        loc=node.findtext(loc_tag,'')
-        if loc not in previous_urls:static.append(node)
-    for node in list(parent):parent.remove(node)
-    for node in static:parent.append(node)
+        loc = node.findtext(loc_tag, '')
+        if _normalized_url(loc) not in removed and _normalized_url(loc) not in added:
+            static.append(node)
+    for node in list(parent):
+        parent.remove(node)
+    for node in static:
+        parent.append(node)
     for url in sorted(add_urls):
-        node=ET.SubElement(parent,url_tag)
-        ET.SubElement(node,loc_tag).text=url
-        ET.SubElement(node,last_tag).text=current_date
-    ET.indent(tree,space='  ')
-    file.write_bytes(ET.tostring(parent,encoding='utf-8',xml_declaration=True))
+        node = ET.SubElement(parent, url_tag)
+        ET.SubElement(node, loc_tag).text = url
+        ET.SubElement(node, last_tag).text = current_date
+    ET.indent(tree, space='  ')
+    file.write_bytes(ET.tostring(parent, encoding='utf-8', xml_declaration=True))
 
-def run(root,rows,host):
-    before=read_state(root)
-    docs={}
-    for row in rows:
-        clean=clean_row(row,host)
-        if clean is not None:docs[clean['path']]=clean
-    actual=set()
-    for path,row in docs.items():
-        file=root/path
-        if file.exists() and MARKER not in file.read_text('utf-8'):
-            print('Skipping manually maintained page:',path)
+
+def reconcile_archived_cards(root, published_ids):
+    """After an authoritative RPC success, drop only UUID-matched Cloud cards.
+
+    Preserves legacy/static cards, teacher layouts, content and all assets.
+    During network errors this function is NEVER invoked.
+    """
+    from bs4 import BeautifulSoup
+    files = [root / 'portfolio' / 'index.html']
+    files.extend((root / 'teacher').glob('*/index.html'))
+    removed = 0
+    for file in files:
+        if not file.is_file():
             continue
-        file.parent.mkdir(parents=True,exist_ok=True)
-        html=document(row)
-        if not file.exists() or file.read_text('utf-8')!=html:file.write_text(html,'utf-8')
-        actual.add(path)
-    for stale in sorted(before-actual):
-        file=root/stale
-        if file.exists() and MARKER in file.read_text('utf-8'):
+        original = file.read_text('utf-8')
+        if 'data-aesh-cloud-id' not in original:
+            continue
+        soup = BeautifulSoup(original, 'html.parser')
+        cut = 0
+        for card in soup.select('article.portfolio-card[data-aesh-cloud-id]'):
+            wid = str(card.get('data-aesh-cloud-id') or '').strip().lower()
+            if re.fullmatch(UUID, wid, re.I) and wid not in published_ids:
+                card.decompose()
+                cut += 1
+        if cut:
+            # Re-serialization is restricted to HTML that actually contains a
+            # revoked Cloud card; stylesheet, animation and other assets untouched.
+            fresh = '<!doctype html>\n' + str(soup.html) if soup.html else str(soup)
+            file.write_text(fresh, 'utf-8')
+            removed += cut
+    return removed
+
+
+def reconcile_search_index(root, published, existing):
+    """Drop revoked Cloud-only search links; preserve every legacy item."""
+    file = root / 'assets/aesh-search-index.json'
+    if not file.is_file():
+        return 0, 0
+    entries = json.loads(file.read_text('utf-8'))
+    if not isinstance(entries, list):
+        raise ValueError('Search index is malformed; do not mutate Cloud site')
+    removed = 0
+    result = []
+    kept_work = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError('Search index contains an invalid item; no safe publication')
+        url = str(entry.get('href') or '')
+        unquoted = unquote(urlsplit(url).path).lstrip('/')
+        relative = unquoted.rstrip('/') + '/index.html'
+        if relative in existing and relative not in published:
+            removed += 1
+            continue
+        if relative in published:
+            kept_work.add(relative)
+        result.append(entry)
+    added = 0
+    for path, info in published.items():
+        if path not in kept_work:
+            result.append({'type': 'work', 'title': info['title'],
+                           'detail': info['desc'],
+                           'href': '/' + quote(path.removesuffix('index.html'), safe='/')})
+            added += 1
+    if added or removed:
+        file.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+    return removed, added
+
+
+def run(root, rows, host):
+    """Treat a fully parsed, valid RPC result as the ONLY deletion authority.
+
+    Failure, malformed response or duplicate UUIDs abort BEFORE any writes.
+    Files with legacy IDs or no verifiable Cloud UUID are never deleted.
+    """
+    if not isinstance(rows, list):
+        raise ValueError('Public works RPC did not return a list; no files changed')
+    docs = {}
+    ids = {}
+    for index, raw in enumerate(rows):
+        entry = clean_row(raw, host)
+        if entry is None:
+            raise ValueError('Invalid published work at RPC index ' + str(index) + '; no files changed')
+        identifier = entry['id'].lower()
+        if identifier in ids and ids[identifier] != entry['path']:
+            raise ValueError('Published UUID has conflicting slugs; no files changed')
+        if entry['path'] in docs and docs[entry['path']]['id'] != identifier:
+            raise ValueError('Multiple published works share one URL; no files changed')
+        entry['id'] = identifier
+        ids[identifier] = entry['path']
+        docs[entry['path']] = entry
+
+    # Discover the original 15 Cloud pages not present in STATE as well as
+    # regular script-generated Cloud pages. Path+UUID must both be trustworthy.
+    before_state = read_state(root)
+    existing = discover_cloud_pages(root)
+    obsolete_shells = discover_obsolete_cloud_shells(root)
+    # Unverified old SEO shells are never treated as immutable legacy works.
+    # The public RPC result alone decides whether an obsolete URL is rebuilt;
+    # on an RPC/network error run() is never invoked and nothing is touched.
+    old_paths = (set(existing) | obsolete_shells
+                 | {path for path in before_state if not (root / path).is_file()})
+    rendered = {}
+    for path, entry in docs.items():
+        file = root / path
+        if file.exists() and existing.get(path) != entry['id'] and path not in obsolete_shells:
+            raise RuntimeError('Refusing to overwrite a different or static work page: ' + path)
+        rendered[path] = document(entry, host)
+    # All documents are validated/rendered before write or removal.
+    for path, html in rendered.items():
+        file = root / path
+        file.parent.mkdir(parents=True, exist_ok=True)
+        if not file.exists() or file.read_text('utf-8') != html:
+            file.write_text(html, 'utf-8')
+
+    removed = []
+    for stale in sorted(set(existing) - set(docs)):
+        file = root / stale
+        # Re-read immediately before deletion: never rely on state or filename.
+        if file.is_file() and page_cloud_uuid(file.read_text('utf-8')) == existing[stale]:
             file.unlink()
-            try:file.parent.rmdir()
-            except OSError:pass
-    (root/STATE).write_text(json.dumps({'generated':sorted(actual)},ensure_ascii=False,indent=2)+'\n','utf-8')
-    last_urls={'https://aesh.ir/'+p.removesuffix('index.html') for p in before}
-    new_urls={'https://aesh.ir/'+p.removesuffix('index.html') for p in actual}
-    # Only rewrite sitemap when the routes have changed, not on every scheduled run.
-    if new_urls!=last_urls:write_sitemap(root,new_urls,last_urls)
-    print('Cloud work previews synced:',len(actual),'published works')
+            removed.append(stale)
+            try:
+                file.parent.rmdir()
+            except OSError:
+                pass
+
+    card_count = reconcile_archived_cards(root, set(ids))
+    removed_index, added_index = reconcile_search_index(root, docs, existing)
+    (root / STATE).write_text(
+        json.dumps({'generated': sorted(docs)}, ensure_ascii=False, indent=2) + '\n', 'utf-8'
+    )
+    old_urls = {_site_url(root, path) for path in old_paths}
+    new_urls = {_site_url(root, path) for path in docs}
+    # A published old-format wrapper may be absent from sitemap even when the
+    # before/after URL sets are equal. Reconcile its verified route explicitly.
+    if old_urls != new_urls or obsolete_shells:
+        write_sitemap(root, new_urls, old_urls)
+    print('Cloud work previews synced:', len(docs), 'published works; removed',
+          len(removed), 'stale Cloud HTML; removed', card_count, 'stale cards;',
+          removed_index, 'stale search items;', added_index, 'new search items')
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()

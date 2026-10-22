@@ -9,6 +9,8 @@
   let previewUrl = null;
   let originalAvatar = null;
   let loading = false;
+  let avatarRequest = 0;
+  let avatarConfirmed = false;
   const roleLabel = role => role === 'teacher' ? 'استاد انجمن' : role === 'student' ? 'هنرجوی انجمن' : 'عضو انجمن';
   const fa = value => Number(value).toLocaleString('fa-IR');
   const show = (id, enabled) => { $(id).hidden = !enabled; };
@@ -49,7 +51,7 @@
     $('avatar').value = '';
     $('avatarFileName').textContent = 'هنوز تصویری انتخاب نشده است';
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = null; selected = null; counter();
+    previewUrl = null; selected = null; avatarRequest++;avatarConfirmed=false;avatarQualityBox().hidden=true;counter();
   }
   function showLogin() {
     window.dispatchEvent(new Event('aesh:member-logout'));
@@ -57,56 +59,44 @@
     $('password').value = ''; $('avatar').value = '';
     $('avatarFileName').textContent = 'هنوز تصویری انتخاب نشده است';
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = null; selected = null;
+    previewUrl = null; selected = null; avatarRequest++;avatarConfirmed=false;avatarQualityBox().hidden=true;
   }
-  function resizeAvatar(file) {
-    return new Promise(async (resolve, reject) => {
-      const types = ['image/jpeg', 'image/png', 'image/webp'];
-      if (!file || !types.includes(file.type) || file.size < 1 || file.size > 8 * 1024 * 1024) {
-        reject(new Error('عکس باید JPG، PNG یا WebP و کمتر از ۸ مگابایت باشد.')); return;
-      }
-      const temp = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        try {
-          URL.revokeObjectURL(temp);
-          if (!img.naturalWidth || !img.naturalHeight || img.naturalWidth * img.naturalHeight > 25000000) throw new Error('ابعاد تصویر قابل قبول نیست.');
-          const canvas = document.createElement('canvas');
-          const ratio = Math.min(1, 640 / Math.max(img.naturalWidth, img.naturalHeight));
-          canvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
-          canvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
-          canvas.getContext('2d', { alpha: false }).drawImage(img, 0, 0, canvas.width, canvas.height);
-          const quality = [0.82, 0.67, 0.52, 0.38, 0.25];
-          const encode = index => {
-            canvas.toBlob(blob => {
-              if (!blob || blob.type !== 'image/webp') { reject(new Error('مرورگر شما تبدیل تصویر به WebP را پشتیبانی نمی‌کند.')); return; }
-              if (blob.size <= 249999 && blob.size > 0) { resolve(blob); return; }
-              if (index + 1 >= quality.length) { reject(new Error('تصویر هنوز خیلی سنگین است؛ عکس کوچک‌تری انتخاب کنید.')); return; }
-              encode(index + 1);
-            }, 'image/webp', quality[index]);
-          };
-          encode(0);
-        } catch (error) { reject(error); }
-      };
-      img.onerror = () => { URL.revokeObjectURL(temp); reject(new Error('این فایل تصویر معتبر و قابل‌نمایش نیست.')); };
-      img.src = temp;
-    });
+  function avatarQualityBox() {
+    let box = $('avatarQualityBox');
+    if (box) return box;
+    box = document.createElement('label');box.id='avatarQualityBox';box.className='quality-confirm';box.hidden=true;
+    const check=document.createElement('input');check.type='checkbox';check.id='avatarQualityConfirm';
+    check.addEventListener('change',()=>{avatarConfirmed=check.checked;});
+    box.append(check,document.createTextNode(' کیفیت پیش‌نمایش فشرده‌شده را بررسی و تأیید می‌کنم.'));
+    $('avatar').closest('.avatar-row').after(box);
+    return box;
+  }
+  async function chooseAvatar(file) {
+    const request=++avatarRequest;
+    selected=null;avatarConfirmed=false;avatarQualityBox().hidden=true;
+    if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=null;
+    if (!file) { $('avatarFileName').textContent='هنوز تصویری انتخاب نشده است';return; }
+    $('avatarFileName').textContent='در حال فشرده‌سازی خودکار…';
+    try {
+      const image=await window.AESHImage.optimize(file);
+      if(request!==avatarRequest)return;
+      selected=image;
+      previewUrl=URL.createObjectURL(image.blob);
+      setPreview(previewUrl);
+      $('avatarFileName').textContent=window.AESHImage.describe(image);
+      avatarQualityBox().hidden=!image.qualityWarning;
+      if(image.qualityWarning)$('avatarQualityConfirm').checked=false;
+    }catch(error){if(request!==avatarRequest)return;selected=null;
+      $('avatarFileName').textContent='فشرده‌سازی ناموفق: '+error.message;
+      $('avatar').value='';
+    }
   }
   async function init() {
     if (!api) { notice('فایل‌های پنل کامل بارگذاری نشده‌اند.', true); return; }
     await loadDefaultBios();
     $('bio').addEventListener('input', counter);
-    $('avatar').addEventListener('change', () => {
-      selected = $('avatar').files[0] || null;
-      $('avatarFileName').textContent = selected ? selected.name.slice(0, 65) : 'هنوز تصویری انتخاب نشده است';
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      previewUrl = selected ? URL.createObjectURL(selected) : null;
-      if (previewUrl) setPreview(previewUrl);
-      else if (me) {
-        const base = defaults[me.role + ':' + me.owner_slug] || {};
-        setPreview(originalAvatar ? api.publicAvatar(originalAvatar, me.updated_at) : base.image || null);
-      }
-    });
+    avatarQualityBox();
+    $('avatar').addEventListener('change', () => chooseAvatar($('avatar').files[0] || null));
     $('loginForm').addEventListener('submit', async event => {
       event.preventDefault(); if (loading) return; busy(true); notice('');
       try {
@@ -124,8 +114,8 @@
         if (bio.length > 700) throw new Error('توضیحات نباید بیشتر از ۷۰۰ نویسه باشند.');
         let path = originalAvatar;
         if (selected) {
-          const upload = await resizeAvatar(selected);
-          path = await api.uploadAvatar(upload);
+          if(selected.qualityWarning&&!avatarConfirmed)throw new Error('لطفاً ابتدا کیفیت تصویر فشرده‌شده را تأیید کنید.');
+          path = await api.uploadAvatar(selected.blob);
         }
         await api.saveBioAndAvatar(bio, path);
         const profile = await api.myProfile(true);

@@ -8,6 +8,9 @@
   const fa = v => String(v).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
   const statusText = { pending:'در انتظار تأیید', published:'منتشرشده', rejected:'ردشده' };
   const types = ['image/jpeg','image/png','image/webp'];
+  let compressed = null, choiceSerial = 0, qualityConfirmed = false;
+  let reviewUrls = [];
+  function revokeReviewUrls(){reviewUrls.forEach(x=>URL.revokeObjectURL(x));reviewUrls=[];}
   let member = null;
   let saving = false;
   let preview = '';
@@ -22,7 +25,7 @@
   }
   function cleanupPreview() {
     if (preview) URL.revokeObjectURL(preview);
-    preview = '';
+    preview = ''; compressed = null; qualityConfirmed = false;
     $('workImagePreviewBox').hidden = true;
     $('workImagePreview').removeAttribute('src');
   }
@@ -34,23 +37,39 @@
     ownerPermission();
     if (!file) throw new Error('ابتدا تصویر نمونه‌کار را انتخاب کنید.');
     if (!types.includes(file.type)) throw new Error('فقط تصاویر JPG، PNG و WebP مجازند.');
-    const sizeLimit = isOwner() ? 12*1024*1024 : 400*1024;
+    const sizeLimit = 20*1024*1024;
     if (!file.size || file.size > sizeLimit) {
-      throw new Error(isOwner() ? 'حجم تصویر مدیر نباید از ۱۲ مگابایت بیشتر باشد.' : 'حجم تصویر استاد یا هنرجو نباید از ۴۰۰ کیلوبایت بیشتر باشد.');
+      throw new Error('حجم ورودی نباید بیش از ۲۰ مگابایت باشد.');
     }
     return file;
   }
-  function showFile() {
-    cleanupPreview();
-    const file = $('workImage').files[0];
-    if (!file) { $('workFileInfo').textContent = 'تصویر هنوز انتخاب نشده است.'; return; }
-    try {
+  function workQualityBox(){
+    let box=$('workQualityBox');if(box)return box;
+    box=document.createElement('label');box.id='workQualityBox';box.className='quality-confirm';box.hidden=true;
+    const check=document.createElement('input');check.type='checkbox';check.addEventListener('change',()=>qualityConfirmed=check.checked);
+    box.append(check,document.createTextNode(' کیفیت تصویر نهایی فشرده‌شده را بررسی و تأیید می‌کنم.'));
+    $('workImagePreviewBox').after(box);return box;
+  }
+  async function showFile() {
+    const request=++choiceSerial;cleanupPreview();workQualityBox().hidden=true;
+    const file=$('workImage').files[0];
+    if(!file){$('workFileInfo').textContent='تصویر هنوز انتخاب نشده است.';return;}
+    try{
       checkSelection(file);
-      $('workFileInfo').textContent = file.name.slice(0, 70) + ' — ' + fa(Math.ceil(file.size/1024)) + ' کیلوبایت — قابل قبول';
-      preview = URL.createObjectURL(file);
-      $('workImagePreview').src = preview;
-      $('workImagePreviewBox').hidden = false;
-    } catch (error) { $('workFileInfo').textContent = error.message; }
+      $('workFileInfo').textContent='در حال فشرده‌سازی خودکار تصویر…';
+      const result=await window.AESHImage.optimize(file);
+      if(request!==choiceSerial)return;
+      compressed=result;
+      $('workFileInfo').textContent=window.AESHImage.describe(result);
+      preview=URL.createObjectURL(result.blob);
+      $('workImagePreview').src=preview;
+      $('workImagePreviewBox').hidden=false;
+      workQualityBox().hidden=!result.qualityWarning;
+      if(result.qualityWarning)workQualityBox().querySelector('input').checked=false;
+    }catch(error){if(request!==choiceSerial)return;
+      $('workFileInfo').textContent='فشرده‌سازی ناموفق: '+error.message;
+      $('workImage').value='';
+    }
   }
   function encodeWebp(canvas, quality) {
     return new Promise((resolve, reject) => {
@@ -148,6 +167,11 @@
     if (!response.ok) throw new Error('فهرست رسمی اساتید و هنرجویان پیدا نشد.');
     const list=await response.json();
     if (!Array.isArray(list)) throw new Error('فهرست رسمی اعضا نامعتبر است.');
+    const more=await api.publicDirectory().catch(()=>[]);
+    if(Array.isArray(more))for(const row of more){
+      if(['teacher','student'].includes(row.role)&&row.owner_slug&&!list.some(p=>p.role===row.role&&p.slug===row.owner_slug))
+        list.push({role:row.role,slug:row.owner_slug,name:row.display_name});
+    }
     for (const item of list) {
       if (!['teacher','student'].includes(item.role) || !item.slug) continue;
       const opt=document.createElement('option');
@@ -161,7 +185,11 @@
     if (saving) return;
     try {
       ownerPermission();
-      const file=checkSelection($('workImage').files[0]);
+      checkSelection($('workImage').files[0]);
+      if(!compressed)throw new Error('ابتدا فشرده‌سازی خودکار تصویر کامل شود.');
+      if(compressed.qualityWarning&&!qualityConfirmed)throw new Error('لطفاً کیفیت پیش‌نمایش فشرده‌شده را تأیید کنید.');
+      const file=compressed.blob;
+      if(file.size>=100000)throw new Error('تصویر نهایی بیش از محدودیت حجم است.');
       const title=$('workTitle').value.trim();
       const description=$('workDescription').value.trim();
       if (title.length<2 || title.length>130 || description.length>1400) throw new Error('عنوان یا توضیحات معتبر نیست.');
@@ -177,7 +205,7 @@
       setNotice('در حال آماده‌سازی پیش‌نمایش و ارسال امن تصویر…',false);
       const id=api.newWorkId();
       if (info) info.slug = slugFor(title, id);
-      const thumb=await buildThumb(file);
+      const thumb=(await window.AESHImage.optimize(file,{maxBytes:60000})).blob;
       const thumbPath=await api.uploadWorkThumb(thumb,id);
       const imagePath=await api.uploadWorkImage(file,id,isOwner());
       // Only the owner-side RPC accepts owner/slug; the member RPC has NO slug argument.
@@ -197,7 +225,7 @@
   async function loadQueue() {
     if (!isOwner()) return;
     const stamp=serial;
-    const root=$('reviewList');root.replaceChildren();
+    const root=$('reviewList');revokeReviewUrls();root.replaceChildren();
     const loading=document.createElement('p');loading.className='secondary';loading.textContent='در حال بارگذاری آثار برای بررسی…';root.append(loading);
     try {
       const rows=await api.ownerQueue();
@@ -211,6 +239,34 @@
         h.append(title,statusBadge(item.status));card.append(h);
         const who=document.createElement('p');who.textContent=(item.owner_name||item.owner_slug||'')+' • '+new Date(item.created_at).toLocaleDateString('fa-IR');card.append(who);
         if (item.description) {const description=document.createElement('p');description.textContent=String(item.description).slice(0,300);card.append(description);}
+        // Thumbnail/full preview use the manager session and Storage SELECT permissions.
+        const area=document.createElement('div');area.className='aesh-review-picture';
+        const mini=document.createElement('img');mini.alt='پیش‌نمایش اثر برای تأیید مدیریت';mini.loading='lazy';
+        const pictureMessage=document.createElement('p');pictureMessage.className='secondary small';pictureMessage.textContent='در حال بارگذاری امن تصویر…';
+        const expand=document.createElement('button');expand.type='button';expand.className='outline';expand.textContent='بزرگ‌نمایی تصویر';expand.disabled=true;
+        area.append(mini,pictureMessage,expand);card.append(area);
+        const fullModal=()=>{const dialog=document.createElement('dialog');dialog.className='aesh-image-dialog';
+          const close=document.createElement('button');close.type='button';close.textContent='بستن ×';close.className='outline';
+          const image=document.createElement('img');image.alt='تصویر کامل اثر: '+String(item.title||'نمونه‌کار');
+          const hint=document.createElement('p');hint.textContent='در حال دریافت فایل اصلی با مجوز مدیر…';
+          close.addEventListener('click',()=>dialog.close());
+          dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+          dialog.append(close,image,hint);document.body.append(dialog);dialog.showModal();
+          api.reviewImage(item).then(blob=>{if(!dialog.isConnected)return;
+            const source=URL.createObjectURL(blob);image.src=source;
+            dialog.addEventListener('close',()=>URL.revokeObjectURL(source),{once:true});hint.textContent='تصویر واقعی ذخیره‌شده ('+blob.size+' بایت)';
+          }).catch(err=>{if(dialog.isConnected)hint.textContent='دریافت تصویر ممکن نشد: '+err.message;});
+        };
+        expand.addEventListener('click',fullModal);
+        api.reviewImage(item,true).then(blob=>{if(!card.isConnected)return;
+          const source=URL.createObjectURL(blob);reviewUrls.push(source);mini.src=source;expand.disabled=false;
+          pictureMessage.textContent='پیش‌نمایش نهایی در Storage ('+blob.size+' بایت)';
+        }).catch(err=>{if(card.isConnected)pictureMessage.textContent='تصویر در دسترس نیست: '+err.message;});
+        const detail=document.createElement('p');detail.className='secondary small';
+        detail.textContent='شناسه صاحب اثر: '+String(item.owner_slug||item.owner_id||'نامشخص')+' — شناسه اثر: '+String(item.id||'')+
+           ' — ابعاد: '+(Number(item.full_width||item.width)>0&&Number(item.full_height||item.height)>0?
+           (Number(item.full_width||item.width)+'×'+Number(item.full_height||item.height)):'ثبت نشده');
+        card.append(detail);
         const controls=document.createElement('div');controls.className='review-controls';
         const statusBox=document.createElement('label');statusBox.textContent='وضعیت اثر';
         const select=document.createElement('select');
@@ -250,11 +306,11 @@
     $('ownerFields').hidden=!owner;
     $('ownerModeration').hidden=!owner;
     $('myWorksList').hidden=false;
-    $('sizeTag').textContent=owner?'حداکثر ۱۲ مگابایت':'حداکثر ۴۰۰ کیلوبایت';
+    $('sizeTag').textContent='خروجی کمتر از ۱۰۰ کیلوبایت';
     $('workHeading').textContent=owner?'انتشار نمونه‌کار توسط مدیر':'ارسال نمونه‌کار جدید';
     $('workHelp').textContent=owner
-      ? 'تصویر تا ۱۲ مگابایت قابل آپلود است؛ صاحب اثر را انتخاب کنید. لینک اختصاصی خودکار ساخته می‌شود.'
-      : 'تصویر تا ۴۰۰ کیلوبایت مجاز است؛ لینک اثر پس از تأیید مدیریت خودکار فعال می‌شود.';
+      ? 'تصویر انتخابی خودکار به WebP زیر ۱۰۰ کیلوبایت تبدیل می‌شود؛ صاحب اثر را انتخاب کنید.'
+      : 'تصویر ورودی به‌طور خودکار به WebP زیر ۱۰۰ کیلوبایت تبدیل می‌شود؛ اثر پس از تأیید منتشر خواهد شد.';
     $('workSubmit').textContent=owner?'ثبت و انتشار نمونه‌کار':'ارسال برای تأیید مدیر';
     $('myWorksList').previousElementSibling.querySelector('h3').textContent=owner?'نمونه‌کارهای آپلودشده مدیر':'نمونه‌کارهای ارسال‌شده من';
     $('workForm').reset();cleanupPreview();showFile();
@@ -265,7 +321,7 @@
     await loadMyWorks();
   }
   function reset() {
-    member=null;serial++;
+    member=null;serial++;choiceSerial++;revokeReviewUrls();
     if ($('workForm')) $('workForm').reset();
     cleanupPreview();
     $('ownerModeration').hidden=true;
@@ -273,7 +329,7 @@
   }
   function init() {
     if (!api) return;
-    $('workImage').addEventListener('change',showFile);
+    workQualityBox();$('workImage').addEventListener('change',showFile);
     $('workForm').addEventListener('submit',submit);
     $('refreshMyWorks').addEventListener('click',loadMyWorks);
     $('refreshQueue').addEventListener('click',loadQueue);

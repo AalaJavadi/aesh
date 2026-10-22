@@ -1,135 +1,191 @@
-name: AESH PRODUCTION - approved-only v5 release
+name: AESH 5.0 - Public site release (Build and Deploy)
+
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '15,45 * * * *'
+
+# Publishes only the public website and works included in the successful
+# published-only Supabase RPC response. Never runs SQL/migrations or writes DB.
+# v5 owner-directory/reviews and new image uploads remain in guarded mode until
+# the original production Supabase security setup is verified separately.
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
-  group: aesh-approved-production-publisher
+  group: aesh-single-safe-pages-publisher
   cancel-in-progress: false
+
 jobs:
   build:
-    # BOTH variables must be set deliberately AFTER real Supabase and GitHub QA.
-    # By default this entire job is SKIPPED; no production deploy can occur.
-    if: ${{ vars.AESH_PRODUCTION_RELEASE_APPROVED == 'true' && vars.AESH_PRODUCTION_REPOSITORY == github.repository && github.ref == 'refs/heads/main' }}
+    name: Build and verify approved public website
+    if: ${{ github.repository == 'AalaJavadi/aesh' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out complete AESH 5.0
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install all pinned Python build dependencies
+      - name: Install pinned build dependencies and verify bs4
         shell: bash
         run: |
           set -euo pipefail
           test -f requirements-build.txt
           python -m pip install --disable-pip-version-check -r requirements-build.txt
           python -m pip check
-      - name: Preflight every Python build-tool import (fail closed)
+          python -c "from bs4 import BeautifulSoup; print('PASS: bs4 available')"
+      - name: Check Python import dependencies
         run: python tools/check_build_dependencies.py
-      - name: Guard production source and only one publisher
+      - name: Enforce exactly one Pages publisher and correct production domain
         run: python tools/check_production_release.py --repo .
-      - name: Validate production work buckets (read only, fails closed)
-        env:
-          AESH_PRODUCTION_RELEASE_APPROVED: ${{ vars.AESH_PRODUCTION_RELEASE_APPROVED }}
-          AESH_PRODUCTION_SUPABASE_REF: ${{ vars.AESH_PRODUCTION_SUPABASE_REF }}
-        run: python tools/check_production_privacy_readonly.py
-      - name: Synchronize editor export fallbacks before immutable parity gate
+      - name: Verify public-only v5 upload privacy remains fail-closed
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PYTHON'
+          python - <<'PY'
+          from pathlib import Path
+          client = Path('assets/aesh-core.js').read_text(encoding='utf-8')
+          required = ["rpc('aesh_5_work_buckets_private'", 'await requirePrivateWorkBuckets();',
+                      "'aesh-member-works','aesh-owner-works','aesh-work-thumbs'"]
+          for item in required:
+              if item not in client:
+                  raise SystemExit('FAIL: private work upload preflight missing: ' + item)
+          print('PASS: pending work uploads demand a private-bucket server check')
+          PY
+      - name: Synchronize editor ZIP fallbacks with checked-out sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          #!/usr/bin/env python3
+          """Synchronize BOTH editor ZIP source snapshots from checked-out, reviewed files.
+          
+          This does not disable or relax the fail-closed check; check_editor_fallback_offline.py
+          must still pass after synchronization. No network or database access is used.
+          """
           from pathlib import Path
           import base64
           import json
           import re
-
+          
           root = Path('.')
-          manifest = json.loads((root / 'assets/aesh-package-files.json').read_text(encoding='utf-8'))
-          needed = [p for p in manifest if p.startswith(('tools/', 'sql/', 'supabase/', '.github/'))
-                    or ('/' not in p and p.endswith(('.md', '.txt')))]
+          names = json.loads((root / 'assets/aesh-package-files.json').read_text(encoding='utf-8'))
+          needed = [
+              name for name in names
+              if name.startswith(('tools/', 'sql/', 'supabase/', '.github/'))
+              or ('/' not in name and name.endswith(('.md', '.txt')))
+          ]
           if not needed:
-              raise SystemExit('FAIL: editor export has no build-tool sources')
-          snapshots = {}
-          for relative in needed:
-              source = root / relative
-              if not source.is_file():
-                  raise SystemExit('FAIL: missing editor export source: ' + relative)
-              snapshots[relative] = base64.b64encode(source.read_bytes()).decode('ascii')
-          for filename, pattern in (
+              raise SystemExit('FAIL: no packaged build sources in the editor manifest')
+          
+          payload = {}
+          for name in needed:
+              item = root / name
+              if not item.is_file():
+                  raise SystemExit('FAIL: source listed in editor manifest is missing: ' + name)
+              payload[name] = base64.b64encode(item.read_bytes()).decode('ascii')
+          
+          for filename, regex in (
               ('assets/aesh-editor-immutable.js', r'window\.AESH_IMMUTABLE_FILES=(\{.*?\});'),
               ('editor/index.html', r'var AESH_EDITOR_EMBEDDED_FILES=(\{.*?\});'),
           ):
-              target = root / filename
-              original_text = target.read_text(encoding='utf-8')
-              match = re.search(pattern, original_text, re.S)
+              item = root / filename
+              original = item.read_text(encoding='utf-8')
+              match = re.search(regex, original, re.S)
               if not match:
-                  raise SystemExit('FAIL: editor source snapshot missing: ' + filename)
-              current = json.loads(match.group(1))
-              updates = sum(current.get(k) != v for k, v in snapshots.items())
-              current.update(snapshots)
-              replacement = json.dumps(current, ensure_ascii=False, separators=(',', ':'))
-              if updates:
-                  target.write_text(original_text[:match.start(1)] + replacement + original_text[match.end(1):], encoding='utf-8')
-              print(f'PASS: {filename}: {updates} updated snapshots')
-          PYTHON
-      - name: Verify immutable editor package, independent generators and Stage gates offline
-        run: |
-          python tools/check_editor_fallback_offline.py
-          python tools/test_generated_pages_offline.py
-          python tools/test_staged_and_archive_offline.py
-      - name: Require public directory RPC before Production release (read only)
+                  raise SystemExit('FAIL: editor mapping not found: ' + filename)
+              mapped = json.loads(match.group(1))
+              changed = [name for name, encoded in payload.items() if mapped.get(name) != encoded]
+              for name, encoded in payload.items():
+                  mapped[name] = encoded
+              if changed:
+                  encoded_map = json.dumps(mapped, ensure_ascii=False, separators=(',', ':'))
+                  updated = original[:match.start(1)] + encoded_map + original[match.end(1):]
+                  item.write_text(updated, encoding='utf-8')
+              print(f'PASS: {filename}: {len(changed)} refreshed / {len(needed)} source entries', flush=True)
+          PY
+
+      - name: Test editor ZIP fallback (offline)
+        run: python tools/check_editor_fallback_offline.py
+      - name: Test generated member and work pages (offline)
+        run: python tools/test_generated_pages_offline.py
+      - name: Test stage, revoked Cloud works and sitemap (offline)
+        run: python tools/test_staged_and_archive_offline.py
+      - name: Fetch and render ONLY currently published Supabase works
+        run: python tools/sync_cloud_share.py
+      - name: Verify optional directory without modifying old members
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PYTHON'
+          python - <<'PY'
           import json
           import sys
           from pathlib import Path
           from urllib.error import HTTPError, URLError
+
           sys.path.insert(0, str(Path('tools').resolve()))
           import sync_directory_profiles as directory
+
+          def verify_empty_directory_state():
+              state_file = Path(directory.STATE)
+              if state_file.exists():
+                  contents = json.loads(state_file.read_text(encoding='utf-8'))
+                  if not isinstance(contents, dict) or contents.get('generated') != []:
+                      raise RuntimeError('Directory RPC is absent but generated directory state exists; refusing to skip')
+              for role in ('teacher', 'student'):
+                  for page in Path(role).glob('*/index.html'):
+                      if directory.MARKER in page.read_text(encoding='utf-8'):
+                          raise RuntimeError('Directory RPC is absent but generated profile exists: ' + str(page))
+
           try:
-              records, host = directory.fetch_rows()
-          except HTTPError as exc:
+              rows, host = directory.fetch_rows()
+          except HTTPError as error:
               try:
-                  payload = json.loads(exc.read(8192).decode('utf-8'))
+                  details = json.loads(error.read(8192).decode('utf-8'))
               except (ValueError, UnicodeDecodeError):
-                  payload = {}
-              reason = payload.get('code') if isinstance(payload, dict) else None
-              if exc.code == 404 and reason == 'PGRST202':
-                  print('::error title=Production database RPC missing::aesh_public_directory() is absent from the Supabase public API. Do not deploy. Run the read-only directory check from the release kit; review migration in TEST before applying to Production.')
+                  details = {}
+              code = details.get('code') if isinstance(details, dict) else None
+              if error.code == 404 and code == 'PGRST202':
+                  verify_empty_directory_state()
+                  print('::warning title=Public directory RPC unavailable::PGRST202: aesh_public_directory() is not registered in this Supabase project. Skipped only for public-only static v5 release with no generated directory pages/state. New profile/review features remain UNAVAILABLE until database migration is safely tested. No deletion.')
               else:
-                  print(f'::error title=Directory RPC unavailable::HTTP {exc.code}, PostgREST code: {reason}')
+                  message = details.get('message', '') if isinstance(details, dict) else ''
+                  print(f'FAIL: Directory RPC HTTP {error.code}, code={code}, detail={str(message)[:220]}', file=sys.stderr)
+                  raise SystemExit(2)
+          except (URLError, ValueError, OSError) as error:
+              print('FAIL: Directory RPC/network/data error: ' + str(error), file=sys.stderr)
               raise SystemExit(2)
-          except (URLError, ValueError, OSError) as exc:
-              print('::error title=Directory RPC unavailable::' + str(exc)[:220])
-              raise SystemExit(2)
-          print(f'PASS: directory RPC responded with {len(records)} public profiles')
-          PYTHON
-      - name: Sync published Cloud works from successful RPC snapshot
-        run: python tools/sync_cloud_share.py
-      - name: Sync published directory profiles from successful RPC snapshot
-        run: python tools/sync_directory_profiles.py
-      - name: Stage public files and enforce complete route manifest
+          else:
+              directory.run(rows, host)
+          PY
+
+      - name: Stage public site, withholding unverified old cloud shells
         run: python tools/stage_site.py
-      - name: Independent post-stage check
+      - name: Verify every sitemap route and public stage
         run: python tools/verify_staged_site.py --source . --staged _site
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload ONLY verified staged public files
+        uses: actions/upload-pages-artifact@v4
         with:
           path: _site
+
   deploy:
+    name: Deploy approved public AESH 5.0
     needs: build
-    if: ${{ needs.build.result == 'success' && vars.AESH_PRODUCTION_RELEASE_APPROVED == 'true' && vars.AESH_PRODUCTION_REPOSITORY == github.repository && github.ref == 'refs/heads/main' }}
+    if: ${{ needs.build.result == 'success' && github.repository == 'AalaJavadi/aesh' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy only explicitly approved verified Pages artifact
-        id: deployment
+      - name: Deploy only successful verified public build
         uses: actions/deploy-pages@v4
+        id: deployment

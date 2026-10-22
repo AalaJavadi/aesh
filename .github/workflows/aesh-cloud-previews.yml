@@ -1,37 +1,173 @@
-name: Deploy AESH with artwork previews
+name: AESH 5.0 - Manual QA (no deployment)
+
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '*/30 * * * *'
+
+# Diagnostic/validation workflow. Publication is performed ONLY by the
+# separately release-gated aesh-production-pages.yml workflow.
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
 concurrency:
-  group: aesh-pages-deploy
+  group: aesh-verified-preview-${{ github.ref }}
   cancel-in-progress: false
+
 jobs:
   build:
+    name: Verify Python, previews, routes and safety checks
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out site source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # This MUST execute in the BUILD job and BEFORE any tools/*.py script.
+      - name: Install build dependencies (fix missing bs4)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f requirements-build.txt
+          python -m pip install --disable-pip-version-check -r requirements-build.txt
+          python -m pip check
+          python -c "from bs4 import BeautifulSoup; assert BeautifulSoup('<p>OK</p>', 'html.parser').p.text == 'OK'; print('PASS: bs4 available in BUILD job')"
+
+      - name: Check every build script dependency
+        run: python tools/check_build_dependencies.py
+
+      - name: Block competing/unsafe production publishers
+        run: python tools/check_production_release.py --repo .
+
+      - name: Synchronize editor ZIP fallbacks with checked-out sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          #!/usr/bin/env python3
+          """Synchronize BOTH editor ZIP source snapshots from checked-out, reviewed files.
+          
+          This does not disable or relax the fail-closed check; check_editor_fallback_offline.py
+          must still pass after synchronization. No network or database access is used.
+          """
+          from pathlib import Path
+          import base64
+          import json
+          import re
+          
+          root = Path('.')
+          names = json.loads((root / 'assets/aesh-package-files.json').read_text(encoding='utf-8'))
+          needed = [
+              name for name in names
+              if name.startswith(('tools/', 'sql/', 'supabase/', '.github/'))
+              or ('/' not in name and name.endswith(('.md', '.txt')))
+          ]
+          if not needed:
+              raise SystemExit('FAIL: no packaged build sources in the editor manifest')
+          
+          payload = {}
+          for name in needed:
+              item = root / name
+              if not item.is_file():
+                  raise SystemExit('FAIL: source listed in editor manifest is missing: ' + name)
+              payload[name] = base64.b64encode(item.read_bytes()).decode('ascii')
+          
+          for filename, regex in (
+              ('assets/aesh-editor-immutable.js', r'window\.AESH_IMMUTABLE_FILES=(\{.*?\});'),
+              ('editor/index.html', r'var AESH_EDITOR_EMBEDDED_FILES=(\{.*?\});'),
+          ):
+              item = root / filename
+              original = item.read_text(encoding='utf-8')
+              match = re.search(regex, original, re.S)
+              if not match:
+                  raise SystemExit('FAIL: editor mapping not found: ' + filename)
+              mapped = json.loads(match.group(1))
+              changed = [name for name, encoded in payload.items() if mapped.get(name) != encoded]
+              for name, encoded in payload.items():
+                  mapped[name] = encoded
+              if changed:
+                  encoded_map = json.dumps(mapped, ensure_ascii=False, separators=(',', ':'))
+                  updated = original[:match.start(1)] + encoded_map + original[match.end(1):]
+                  item.write_text(updated, encoding='utf-8')
+              print(f'PASS: {filename}: {len(changed)} refreshed / {len(needed)} source entries', flush=True)
+          PY
+
+      - name: Test editor ZIP fallback (offline)
+        run: python tools/check_editor_fallback_offline.py
+
+      - name: Test independent profile and work pages (offline)
+        run: python tools/test_generated_pages_offline.py
+
+      - name: Test Stage, revoked Cloud pages and security gates (offline)
+        run: python tools/test_staged_and_archive_offline.py
+
+      # Read-only public RPC; this must fail rather than publish stale or
+      # unapproved content when Supabase is unavailable.
       - name: Prepare real HTML share previews from approved works
         run: python tools/sync_cloud_share.py
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+
+      # The PUBLIC directory RPC is an optional v5.0 migration not yet confirmed
+      # live. Only in this NON-DEPLOYING review build, tolerate the verified
+      # PostgREST PGRST202 error, and only if NO generated directory pages/state
+      # exist. All other errors remain fail-closed. Production does not opt in.
+      - name: Check public directory RPC and prepare profiles when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from urllib.error import HTTPError, URLError
+
+          sys.path.insert(0, str(Path('tools').resolve()))
+          import sync_directory_profiles as directory
+
+          def verify_empty_directory_state():
+              state_file = Path(directory.STATE)
+              if state_file.exists():
+                  contents = json.loads(state_file.read_text(encoding='utf-8'))
+                  if not isinstance(contents, dict) or contents.get('generated') != []:
+                      raise RuntimeError('Directory RPC is absent but generated directory state exists; refusing to skip')
+              for role in ('teacher', 'student'):
+                  for page in Path(role).glob('*/index.html'):
+                      if directory.MARKER in page.read_text(encoding='utf-8'):
+                          raise RuntimeError('Directory RPC is absent but generated profile exists: ' + str(page))
+
+          try:
+              rows, host = directory.fetch_rows()
+          except HTTPError as error:
+              try:
+                  details = json.loads(error.read(8192).decode('utf-8'))
+              except (ValueError, UnicodeDecodeError):
+                  details = {}
+              code = details.get('code') if isinstance(details, dict) else None
+              if error.code == 404 and code == 'PGRST202':
+                  verify_empty_directory_state()
+                  print('::warning title=Public directory RPC unavailable::PGRST202: aesh_public_directory() is not registered in this Supabase project. Skipped ONLY in non-deploying verification, with no generated directory pages or deletion. Production still blocked.')
+              else:
+                  message = details.get('message', '') if isinstance(details, dict) else ''
+                  print(f'FAIL: Directory RPC HTTP {error.code}, code={code}, detail={str(message)[:220]}', file=sys.stderr)
+                  raise SystemExit(2)
+          except (URLError, ValueError, OSError) as error:
+              print('FAIL: Directory RPC/network/data error: ' + str(error), file=sys.stderr)
+              raise SystemExit(2)
+          else:
+              directory.run(rows, host)
+          PY
+
+      - name: Stage the public website
+        run: python tools/stage_site.py
+
+      - name: Verify all staged public routes and editor pages
+        run: python tools/verify_staged_site.py --source . --staged _site
+
+      - name: Save verified build as a review artifact (NOT GitHub Pages deploy)
+        uses: actions/upload-artifact@v4
         with:
-          path: '.'
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          name: aesh-build-for-review
+          path: _site
+          if-no-files-found: error

@@ -71,7 +71,7 @@
           <div class="box-heading"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16 4l4 4-11 11H5v-4L16 4Z"/></svg></span><div><h2>ویرایش اطلاعات پروفایل</h2><p class="secondary">تصویر و معرفی شما پس از ذخیره در پروفایل عمومی نمایش داده می‌شود.</p></div></div>
           <form id="profileForm" class="form">
             <label for="avatar">عکس پروفایل</label>
-            <div class="avatar-row"><div class="avatar-box" id="avatarBox"><span><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><img id="avatarPreview" alt="پیش‌نمایش عکس پروفایل" hidden></div><div class="avatar-picker"><input id="avatar" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"><label for="avatar" class="aesh-file-picker"><span class="aesh-file-button">انتخاب تصویر</span><span id="avatarFileName">هنوز تصویری انتخاب نشده است</span></label><p class="secondary small">فرمت‌های JPG، PNG و WebP؛ تصویر به‌صورت خودکار به WebP تبدیل می‌شود (تا ۲۵۰ کیلوبایت).</p></div></div>
+            <div class="avatar-row"><div class="avatar-box" id="avatarBox"><span><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><img id="avatarPreview" alt="پیش‌نمایش عکس پروفایل" hidden></div><div class="avatar-picker"><input id="avatar" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"><label for="avatar" class="aesh-file-picker"><span class="aesh-file-button">انتخاب تصویر</span><span id="avatarFileName">هنوز تصویری انتخاب نشده است</span></label><p class="secondary small">فرمت‌های JPG، PNG و WebP؛ تصویر به‌صورت خودکار به WebP تبدیل می‌شود (کمتر از ۱۰۰ کیلوبایت).</p></div></div>
             <label for="bio">معرفی کوتاه / بیوگرافی</label>
             <textarea id="bio" rows="7" maxlength="700" placeholder="کمی درباره خودتان، تخصص‌ها و سبک کاری‌تان بنویسید…"></textarea>
             <p id="bioCounter" class="counter">۰ / ۷۰۰</p>
@@ -86,7 +86,7 @@
       </div>
 
       <section id="workPanel" class="box work-panel">
-        <div class="work-heading"><div><span class="eyebrow" id="workEyebrow">گالری اعضا</span><h2 id="workHeading">ارسال نمونه‌کار جدید</h2><p id="workHelp" class="secondary">تصویر تا ۴۰۰ کیلوبایت مجاز است؛ اثر پس از تأیید مدیریت با لینک اختصاصی منتشر می‌شود.</p></div><span id="sizeTag" class="limit-tag">حداکثر ۴۰۰ کیلوبایت</span></div>
+        <div class="work-heading"><div><span class="eyebrow" id="workEyebrow">گالری اعضا</span><h2 id="workHeading">ارسال نمونه‌کار جدید</h2><p id="workHelp" class="secondary">تصویر کمتر از ۱۰۰ کیلوبایت مجاز است؛ اثر پس از تأیید مدیریت با لینک اختصاصی منتشر می‌شود.</p></div><span id="sizeTag" class="limit-tag">کمتر از ۱۰۰ کیلوبایت</span></div>
         <form id="workForm" class="form">
           <label for="workTitle">عنوان نمونه‌کار</label>
           <input id="workTitle" maxlength="130" minlength="2" required placeholder="برای اثر خود یک عنوان بنویسید">
@@ -110,13 +110,35 @@
         <div class="work-heading"><div><span class="eyebrow">ویژه مدیریت</span><h2>بررسی و تأیید آثار</h2><p class="secondary">بررسی و انتشار آثار با مدیریت است. لینک اختصاصی پس از تأیید خودکار ساخته می‌شود.</p></div><button id="refreshQueue" type="button" class="outline">به‌روزرسانی</button></div>
         <div id="reviewList" class="review-list"><p class="secondary">در حال دریافت آثار…</p></div>
       </section>
+
+      <section id="ownerDirectory" class="box work-panel" hidden>
+        <div class="work-heading"><div><span class="eyebrow">ویژه مدیریت</span><h2>افزودن استاد و هنرجو</h2><p class="secondary">پروفایل پایدار مستقل از ساخت حساب ورود است. صفحه اختصاصی پس از ساخت در GitHub Pages قابل ایندکس می‌شود.</p></div><button id="directoryRefresh" type="button" class="outline">به‌روزرسانی</button></div>
+        <form id="directoryForm" class="form aesh-directory-form">
+          <div class="aesh-form-split"><div class="field"><label for="directoryRole">نوع عضویت</label><select id="directoryRole"><option value="teacher">استاد</option><option value="student">هنرجو</option></select></div><div class="field"><label for="directoryName">نام و نام خانوادگی</label><input id="directoryName" maxlength="120" minlength="2" required></div></div>
+          <label for="directorySlug">نامک ثابت URL</label><input id="directorySlug" maxlength="90" minlength="2" required dir="auto">
+          <label for="directorySpecialty">تخصص</label><input id="directorySpecialty" maxlength="160">
+          <label for="directorySkills">مهارت‌ها</label><input id="directorySkills" maxlength="320">
+          <label for="directoryBio">بیوگرافی</label><textarea id="directoryBio" maxlength="700" rows="4"></textarea>
+          <label for="directoryPhoto">تصویر پروفایل (اختیاری)</label><input id="directoryPhoto" type="file" accept="image/jpeg,image/png,image/webp"><p id="directoryPhotoText" class="secondary small">تصویر خودکار زیر ۱۰۰ کیلوبایت بهینه می‌شود.</p>
+          <img id="directoryPhotoPreview" class="aesh-admin-avatar" alt="پیش‌نمایش تصویر فشرده" hidden>
+          <label id="directoryPhotoOk" class="quality-confirm" hidden><input type="checkbox"> کیفیت تصویر فشرده‌شده را بررسی و تأیید می‌کنم.</label>
+          <label class="quality-confirm"><input id="directoryPublished" type="checkbox"> پروفایل در فهرست عمومی نمایش داده شود</label>
+          <div class="aesh-admin-actions"><button id="directorySubmit" class="primary" type="submit">ذخیره اطلاعات عضو</button><button id="directoryReset" class="outline" type="button">پروفایل جدید</button></div>
+        </form><div id="directoryNotice" class="notice" role="status" hidden></div><h3>پروفایل‌های اضافه‌شده</h3><div id="directoryList" class="aesh-admin-list"></div>
+      </section>
+      <section id="ownerReviews" class="box work-panel" hidden>
+        <div class="work-heading"><div><span class="eyebrow">ویژه مدیریت</span><h2>نظرات در انتظار تأیید</h2><p class="secondary">هیچ نظر جدیدی پیش از تأیید مدیر نمایش عمومی ندارد.</p></div><button id="adminReviewsRefresh" class="outline" type="button">به‌روزرسانی</button></div>
+        <div id="adminReviewsNotice" class="notice" role="status" hidden></div><div id="adminReviewsList" class="aesh-admin-list"></div>
+      </section>
     </section>
   </main>
 
 
   <script src="../assets/aesh-config.js" defer></script>
-  <script src="../assets/aesh-core.js?v=3.25" defer></script>
-  <script src="members.js?v=3.23" defer></script>
-  <script src="works-panel.js?v=3.23" defer></script>
+  <script src="../assets/aesh-core.js?v=5.0" defer></script>
+  <script src="../assets/aesh-image.js?v=5.0" defer></script>
+  <script src="members.js?v=5.0" defer></script>
+  <script src="works-panel.js?v=5.0" defer></script>
+  <script src="admin-extra.js?v=5.0" defer></script>
 </body>
 </html>

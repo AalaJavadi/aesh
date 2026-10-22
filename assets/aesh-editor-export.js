@@ -3,13 +3,14 @@
 'use strict';
 const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const URL_ROOT=()=>new URL(document.baseURI);
+const TEST_MODE=location.hostname==='aesh-test.github.io';
 const loadURL=path=>new URL(String(path).replace(/^\//,''),URL_ROOT());
 const enc=new TextEncoder();
 const legacy=['student/امیر-رییسی/index.html','student/امیر-مهدی/index.html','student/امیر-مهدی-هنرجو/index.html','teacher/سید-علی-محمد-کاشی/index.html'];
 const kinds=['home','teachers','students','portfolio','courses','events','news','faq','rules','about'];
-let homeTemplate=null;
+let homeTemplate=null,reviewSectionHtml="";
 function stripBadInline(root){
-  $$('.add-btn,.del-btn,.item-edit,.person-edit,.portfolio-edit,.portfolio-del,.featured-edit,.add-tile,.portfolio-admin-note,#editBtn',root).forEach(e=>e.remove());
+  $$('.add-btn,.del-btn,.item-edit,.person-edit,.portfolio-edit,.portfolio-del,.featured-edit,.add-tile,.portfolio-admin-note,#editBtn,#editorPreviewReturn',root).forEach(e=>e.remove());
   $$('[contenteditable]',root).forEach(x=>x.removeAttribute('contenteditable'));
   $$('[onclick]',root).forEach(x=>{if(/(?:handleSiteLink|isEditMode|editItem|addItem|delItem|editPerson|addPerson|addPortfolio|uploadImage|deletePortfolio|changeLogo)/.test(x.getAttribute('onclick')||''))x.removeAttribute('onclick');});
   $$('a[href]',root).forEach(a=>{let h=a.getAttribute('href');if(/^\/(?!\/)/.test(h))a.setAttribute('href',h.substring(1)||'./');});
@@ -18,8 +19,9 @@ function stripBadInline(root){
 }
 function setNode(dest,source){if(dest&&source)dest.replaceWith(source.cloneNode(true));}
 function headFor(doc,route){
-  const clean=(route.path||'/'),origin='https://aesh.ir',canonical=origin+clean;
+  const clean=(route.path||'/'),origin=TEST_MODE?'https://aesh-test.github.io':'https://aesh.ir',canonical=origin+clean;
   doc.title=route.title||'انجمن ادیتوران شایسته | AESH';
+  if(TEST_MODE){for(const selector of ['meta[name=robots]','meta[name=googlebot]']){const bot=doc.head.querySelector(selector);if(bot)bot.setAttribute('content','noindex,nofollow,noarchive');}}
   const meta=(selector,key,value)=>{const el=doc.head.querySelector(selector);if(el)el.setAttribute(key,value);};
   meta('#metaDescription','content',route.description||'انجمن ادیتوران شایسته');
   for(const key of ['ogTitle','twitterTitle'])meta('#'+key,'content',route.title||doc.title);
@@ -83,7 +85,9 @@ function activeContent(route){
     const cards=$$('#portfolioGrid .portfolio-card',view);
     cards.forEach((card,i)=>{if(i>=12)card.setAttribute('data-more-hidden','true');
       const it=window.__AESH_EXPORT_DATA__?.portfolio?.find(x=>String(x.id)===String(card.dataset.itemId));
-      if(it)card.dataset.ownerType=it.ownerType||'student';});
+      if(it){card.dataset.ownerType=it.ownerType||'student';
+        card.dataset.aeshCloudId=it._aesh_cloud?String(it.id||'').replace(/^cloud-/,''):'';
+        card.dataset.cloudPending=String(!!it._aesh_cloud);}});
   }
   return {main:view,section};
  }
@@ -98,11 +102,40 @@ function serializedDocument(route){
  for(const sel of ['header','#mobileNavOverlay','footer','#backTop','#globalSearchModal'])setNode(doc.querySelector(sel),document.querySelector(sel));
  stripBadInline(doc.body);
  setNav(doc,content.section);headFor(doc,route);
- doc.body.dataset.aeshKind=route.kind;doc.body.dataset.aeshPath=route.path;
+ doc.body.dataset.aeshKind=route.kind;doc.body.dataset.aeshPath=route.path; 
+ // Recreate page-local enhancement modules; a homepage-only script is not enough.
+ const scripts=Array.from(doc.querySelectorAll('script[src]'));
+ for(const tag of scripts){if(tag.src.includes('aesh-home-stats'))tag.remove();}
+ function addScript(filename){const x=doc.createElement('script');x.src='/assets/'+filename+'?v=5.0';x.defer=true;doc.body.appendChild(x);}
+ function needsApi(){return route.kind==='teacher'||route.kind==='student'||route.kind==='work'||['/','/teachers/','/students/','/portfolio/','/about/'].includes(route.path);}
+ if(needsApi()&&!doc.querySelector('script[src*="aesh-core.js"]')){addScript('aesh-config.js');addScript('aesh-core.js');}
+ if(route.path==='/'){doc.body.dataset.aeshStaticWorkCount=String((window.__AESH_EXPORT_DATA__?.portfolio||[]).filter(x=>!x._aesh_cloud).length);addScript('aesh-home-stats.js');}
+ if(route.path==='/portfolio/')addScript('aesh-cloud-gallery.js');
+ if(route.kind==='teacher'||route.kind==='student')addScript('aesh-profile-sync.js');
+ if(route.path==='/teachers/'||route.path==='/students/')addScript('aesh-directory.js');
+ if(route.path==='/about/'){
+   if(reviewSectionHtml){const fragment=doc.createElement('div');fragment.innerHTML=reviewSectionHtml;
+     const slot=doc.querySelector('#page-about');if(slot)while(fragment.firstChild)slot.append(fragment.firstChild);}
+   addScript('aesh-reviews.js');
+ }
+ if(route.kind==='teacher'){
+   if(window.AESHFeaturedWorksAdmin?.decorateTeacher){
+      const main=doc.querySelector('.aesh-detail-page');
+      if(main)window.AESHFeaturedWorksAdmin.decorateTeacher(main,route.item,window.__AESH_EXPORT_DATA__);
+   }
+   const src=(window.__AESH_EXPORT_DATA__?.portfolio||[]).filter(w=>w.ownerType==='teacher'&&w.ownerSlug===route.item?.slug&&!w._aesh_cloud)
+     .map(w=>({id:String(w.id),slug:w.slug,title:w.title,image:w.thumb||w.image,owner_role:'teacher',owner_slug:route.item.slug,created_at:w.published_at||w.created_at||'',width:w.fullWidth||0,height:w.fullHeight||0}));
+   const section=doc.querySelector('.teacher-best-gallery');if(section){section.id='aeshTeacherRecentWorks';
+     const grid=section.querySelector('.portfolio-grid');if(grid)grid.id='aeshTeacherRecentGrid';
+     const empty=section.querySelector('.teacher-best-empty');if(empty)empty.id='aeshTeacherWorksEmpty';
+   }
+   const json=doc.createElement('script');json.id='aeshTeacherStaticWorks';json.type='application/json';json.textContent=JSON.stringify(src).replace(/</g,'\\u003c');doc.body.appendChild(json);
+   addScript('aesh-teacher-works.js');
+ }
+ if(route.kind==='work')addScript('aesh-work-details.js');
  if(route.kind==='work'){
-    doc.body.dataset.workId=String(route.item?.id||'');
-    const extra=doc.createElement('script');extra.defer=true;extra.src='assets/aesh-config.js';doc.body.appendChild(extra);
-    for(const src of ['assets/aesh-core.js','assets/aesh-vote-detail.js']){const s=doc.createElement('script');s.defer=true;s.src=src;doc.body.appendChild(s);}
+    doc.body.dataset.aeshWorkId=String(route.item?._aesh_key||('legacy:'+String(route.item?.id||'')));
+    if(!doc.querySelector('script[src*="aesh-vote-detail.js"]'))addScript('aesh-vote-detail.js');
  }
  // Redundant editor scripts must never be present in public pages.
  $$('script',doc).forEach(s=>{if(s.id==='embedded-data'||s.src?.includes('aesh-editor'))s.remove();});
@@ -144,6 +177,8 @@ async function exportAll(){
  const store=safePushFactory(),put=store.put;const routes=allSeoRoutes(d).map(normalizedRoute);const featured=(d.featured||[]).map(featuredRoute);
  const extra=featured.filter(x=>!routes.some(r=>r.path===x.path));const all=routes.concat(extra);
  homeTemplate=await getText('index.html');
+ const aboutPage=await getText('about/index.html');
+ reviewSectionHtml=new DOMParser().parseFromString(aboutPage,'text/html').getElementById('aeshReviews')?.outerHTML||'';
  if(!homeTemplate.includes('aesh-static.js'))throw new Error('TEMPLATE_IS_NOT_INDEPENDENT');
  // Current editor HTML and the newer password verifier are included ONLY at /editor/.
  let editorDoc=buildHtml({...d});const config=Auth.exportConfig();
@@ -167,24 +202,31 @@ async function exportAll(){
  let needed=new Set(oldLinks);let actual=new Set(Array.from(sm.matchAll(/<loc>([^<]+)<\/loc>/g)).map(x=>x[1].replace(/&amp;/g,'&')));
  for(const uri of needed)if(!actual.has(uri)){sm=sm.replace('</urlset>',`  <url><loc>${uri.replace(/&/g,'&amp;')}</loc></url>\n</urlset>`);actual.add(uri);}
  for(const r of extra){const uri='https://aesh.ir'+r.path;if(!actual.has(uri))sm=sm.replace('</urlset>',`  <url><loc>${uri}</loc></url>\n</urlset>`);}
+ if(TEST_MODE)sm=sm.replaceAll('https://aesh.ir','https://aesh-test.github.io');
  put('sitemap.xml',sm);
+ if(TEST_MODE)put('.aesh-test','AESH isolated test environment. No production CNAME.\n');
  put('assets/aesh-search-index.json',makeSearchIndex(d));
  const manifest=JSON.parse(await getText('assets/aesh-package-files.json'));
  if(!Array.isArray(manifest)||manifest.length<40)throw new Error('MANIFEST_INVALID');
  let next=0,missing=[];
- async function worker(){while(next<manifest.length){const path=manifest[next++];if(store.byName.has(path))continue;
-    if(Object.prototype.hasOwnProperty.call(AESH_EDITOR_EMBEDDED_FILES,path)){put(path,bytesFromBase64(AESH_EDITOR_EMBEDDED_FILES[path]));continue;}
+ async function worker(){while(next<manifest.length){const path=manifest[next++];if(store.byName.has(path)||(TEST_MODE&&path==='CNAME'))continue;
+    // Always prefer the actual deployed file. Embedded data is ONLY a fallback
+    // for files GitHub Pages won't serve (e.g. dotfiles). Never restore stale JS.
+    try{put(path,await getFile(path));continue;}catch(e){}
+    if(Object.prototype.hasOwnProperty.call(AESH_EDITOR_EMBEDDED_FILES,path)){
+      put(path,bytesFromBase64(AESH_EDITOR_EMBEDDED_FILES[path]));continue;
+    }
     if(window.AESH_IMMUTABLE_FILES&&Object.prototype.hasOwnProperty.call(window.AESH_IMMUTABLE_FILES,path)){
       put(path,bytesFromBase64(window.AESH_IMMUTABLE_FILES[path]));continue;
     }
-    try{put(path,await getFile(path));}catch(e){missing.push(path);}
+    missing.push(path);
  }}
  await Promise.all(Array.from({length:Math.min(8,manifest.length)},()=>worker()));
  if(missing.length)missingStatus(missing);
- for(const path of ['assets/aesh-site.css','assets/aesh-static.js','assets/aesh-pages.css','assets/aesh-editor-export.js','assets/aesh-editor-runtime.css','assets/aesh-editor-immutable.js','CNAME','robots.txt','sw.js','.nojekyll']){
+ for(const path of ['assets/aesh-site.css','assets/aesh-static.js','assets/aesh-pages.css','assets/aesh-editor-export.js','assets/aesh-editor-runtime.css','assets/aesh-editor-immutable.js','robots.txt','sw.js','.nojekyll'].concat(TEST_MODE?[]:['CNAME'])){
    if(!store.byName.has(path))missingStatus([path]);
  }
- const nextManifest=Array.from(new Set(manifest.concat(Array.from(store.byName.keys()).filter(x=>x.startsWith('assets/'))))).sort();
+ const nextManifest=Array.from(new Set(manifest.concat(Array.from(store.byName.keys()).filter(x=>x.startsWith('assets/'))))).filter(x=>!TEST_MODE||x!=='CNAME').sort();
  put('assets/aesh-package-files.json',JSON.stringify(nextManifest));
  for(const r of routes){if(!store.byName.has(routeFileName(r.path)))missingStatus([r.path]);}
  const zip=makeStoreZip(store.files);if(zip.size<8000000)throw new Error('ZIP_TOO_SMALL_CHECK_IMAGES');

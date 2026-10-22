@@ -1,0 +1,75 @@
+name: AESH - Verify build and approved previews (no production deploy)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Diagnostic/validation workflow. Publication is performed ONLY by the
+# separately release-gated aesh-production-pages.yml workflow.
+permissions:
+  contents: read
+
+concurrency:
+  group: aesh-verified-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Verify Python, previews, routes and safety checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out site source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # This MUST execute in the BUILD job and BEFORE any tools/*.py script.
+      - name: Install build dependencies (fix missing bs4)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f requirements-build.txt
+          python -m pip install --disable-pip-version-check -r requirements-build.txt
+          python -m pip check
+          python -c "from bs4 import BeautifulSoup; assert BeautifulSoup('<p>OK</p>', 'html.parser').p.text == 'OK'; print('PASS: bs4 available in BUILD job')"
+
+      - name: Check every build script dependency
+        run: python tools/check_build_dependencies.py
+
+      - name: Block competing/unsafe production publishers
+        run: python tools/check_production_release.py --repo .
+
+      - name: Test editor ZIP fallback (offline)
+        run: python tools/check_editor_fallback_offline.py
+
+      - name: Test independent profile and work pages (offline)
+        run: python tools/test_generated_pages_offline.py
+
+      - name: Test Stage, revoked Cloud pages and security gates (offline)
+        run: python tools/test_staged_and_archive_offline.py
+
+      # Read-only public RPC; this must fail rather than publish stale or
+      # unapproved content when Supabase is unavailable.
+      - name: Prepare real HTML share previews from approved works
+        run: python tools/sync_cloud_share.py
+
+      - name: Prepare published teacher and student profiles
+        run: python tools/sync_directory_profiles.py
+
+      - name: Stage the public website
+        run: python tools/stage_site.py
+
+      - name: Verify all staged public routes and editor pages
+        run: python tools/verify_staged_site.py --source . --staged _site
+
+      - name: Save verified build as a review artifact (NOT GitHub Pages deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: aesh-build-for-review
+          path: _site
+          if-no-files-found: error

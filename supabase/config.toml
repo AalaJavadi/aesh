@@ -1,0 +1,2 @@
+[functions.aesh-approved-media]
+verify_jwt = false

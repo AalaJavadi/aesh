@@ -1,0 +1,3 @@
+PRODUCTION HOLD: this package is an unverified candidate.
+No GitHub Actions deployment workflow is included.
+Do not publish to aesh.ir or run SQL in Production until 30 live TEST checks, privacy, admin auth, storage and benchmark are PASS.

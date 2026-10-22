@@ -1,0 +1,12 @@
+AESH 5.0 | PRODUCTION CANDIDATE - DO NOT DEPLOY YET
+
+This package is a candidate, NOT a certified production release.
+The SQL migrations were NOT run on the real database.
+Auth, Storage privacy of pending images, role checks, upload sizes,
+review moderation, and live performance require test Supabase evidence.
+
+Do not overwrite the current aesh.ir before all checks pass.
+Follow AESH_DEPLOYMENT_GUIDE.md supplied alongside this ZIP.
+Keep a safe copy of the old, working ZIP for immediate rollback.
+
+No live GitHub/Supabase writes were made by the build process.

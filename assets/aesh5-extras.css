@@ -1,0 +1,21 @@
+/* additive styles only, no global restyle of approved AESH palette */
+.aesh-page-enter .aesh-detail-page,.aesh-page-enter .page.active{animation:aesh5-enter .36s cubic-bezier(.2,.75,.2,1) both}
+@keyframes aesh5-enter{from{opacity:.45;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.aesh-page-enter .aesh-detail-page,.aesh-page-enter .page.active{animation:none}}
+#portfolioGrid .portfolio-card[data-cloud-pending="true"]{display:none!important}
+#portfolioGrid .portfolio-card[data-filter-hidden="true"],#portfolioGrid .portfolio-card[data-more-hidden="true"]{display:none!important}
+.portfolio-detail-media img,#portfolioDetailMedia img{object-fit:contain!important;width:auto!important;max-width:100%!important;max-height:min(80vh,950px)!important;height:auto!important;margin-inline:auto}
+.aesh-real-dimensions{font-size:.87rem;opacity:.7;text-align:center;margin:12px 0}
+.aesh-cloud-detail-notice{margin:15vh auto;text-align:center;max-width:600px;padding:35px;border-radius:18px;border:1px solid #c7ad64}
+.teacher-best-gallery .portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:20px}
+.teacher-best-gallery .portfolio-card-media img{width:100%;height:100%;object-fit:cover}
+.aesh-reviews-section{padding:40px 15px;max-width:1100px;margin:36px auto}
+.aesh-review-form{display:grid;gap:14px;margin:20px 0;max-width:680px}
+.aesh-review-form label{display:grid;gap:7px;font-weight:650}
+.aesh-review-form input,.aesh-review-form textarea{width:100%;box-sizing:border-box;border-radius:13px;padding:12px;border:1px solid var(--border,#cfc5a8);background:var(--card,#fff);color:var(--text,#181818);font:inherit}
+.aesh-review-form button{justify-self:start;cursor:pointer}
+.aesh-reviews-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}
+.aesh-review-card{background:var(--card,#fff);color:var(--text,#181818);border:1px solid var(--border,#ded5bf);border-radius:18px;padding:20px;overflow-wrap:anywhere}
+.aesh-review-card p{white-space:pre-wrap;line-height:1.9}.aesh-review-card time{opacity:.67;font-size:.83rem}
+.aesh-reviews-honey{position:absolute!important;left:-10000px!important;max-width:1px!important;overflow:hidden!important}
+.aesh-form-error{color:#b91c1c}

@@ -1,0 +1,6 @@
+# AESH GitHub Pages Python build dependencies (Python 3.11).
+# Covers tools/build_aesh5.py, tools/build_independent_pages.py,
+# tools/sync_cloud_share.py and tools/sync_directory_profiles.py.
+# The other tools/*.py modules use the Python standard library.
+# beautifulsoup4 pulls in its required soupsieve dependency via pip.
+beautifulsoup4==4.12.3

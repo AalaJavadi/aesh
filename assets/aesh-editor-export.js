@@ -28,7 +28,15 @@ function headFor(doc,route){
   for(const key of ['ogDescription','twitterDescription'])meta('#'+key,'content',route.description||'');
   meta('#canonicalLink','href',canonical);meta('#ogUrl','content',canonical);
   meta('#alternateFa','href',canonical);meta('#alternateDefault','href',canonical);
-  const image=route.image&&/^https:\/\//.test(route.image)?route.image:origin+'/favicon.png';
+  const rawImage=String(route.image||'').trim();
+  const localImage=/^\/(?!\/)[^<>\"']+\.(?:png|jpe?g|webp)(?:[?#].*)?$/i.test(rawImage)
+    ? rawImage : /^assets\/[^<>\"']+\.(?:png|jpe?g|webp)(?:[?#].*)?$/i.test(rawImage)
+      ? '/'+rawImage : '';
+  const roleFallback=route.kind==='teacher'?'/assets/social/teachers.jpg':
+    route.kind==='student'?'/assets/social/students.jpg':
+    route.kind==='work'?'/assets/social/portfolio.jpg':'/favicon.png';
+  const image=/^https:\/\//.test(rawImage)?rawImage:
+    new URL((localImage||roleFallback).replace(/#/g,'%23'),origin+'/').href;
   meta('#ogImage','content',image);meta('#twitterImage','content',image);
   const schema=doc.getElementById('structuredData');
   if(schema){

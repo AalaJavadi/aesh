@@ -24,15 +24,34 @@
    if(name.length<2||!['teacher','student'].includes(role)||!slug)throw new Error('نام، نوع عضویت و نامک معتبر لازم‌اند.');
    const old=records.find(x=>x.id===selectedId);
    if(old&&(old.role!==role||old.owner_slug!==slug))throw new Error('نامک و نوع عضویت پس از ایجاد قابل تغییر نیستند.');
+   const previous=old?.extra&&typeof old.extra==='object'&&!Array.isArray(old.extra)?old.extra:{};
+   const extra={...previous};
+   const years=$('directoryExperience').value.trim();
+   if(years && (!/^(?:[0-9]|[1-5][0-9]|60)$/.test(years)))
+     throw new Error('سابقه فعالیت باید عدد صحیح بین صفر تا ۶۰ باشد.');
+   const link=$('directoryPortfolioUrl').value.trim();
+   if(link){let parsed;try{parsed=new URL(link);}catch(e){throw new Error('لینک نمونه‌کار معتبر نیست.');}
+     if(parsed.protocol!=='https:'||!parsed.hostname||parsed.username||parsed.password)
+       throw new Error('لینک نمونه‌کار باید با https:// و بدون رمز باشد.');}
+   for(const [key,value] of [
+     ['experience_years',years?Number(years):null],
+     ['work_style',$('directoryWorkStyle').value.trim().slice(0,120)||null],
+     ['portfolio_url',link||null],
+     ['achievements',$('directoryAchievements').value.trim().slice(0,300)||null]]){
+     if(value===null)delete extra[key];else extra[key]=value;
+   }
    return {p_id:selectedId,p_role:role,p_owner_slug:slug,p_display_name:name,
      p_specialty:$('directorySpecialty').value.trim(),p_skills:$('directorySkills').value.trim(),p_bio:$('directoryBio').value.trim(),
      p_image_path:old?.image_path||null,p_published:$('directoryPublished').checked,
-     p_extra:{}};
+     p_extra:extra};
  }
  function resetForm(){selectedId=null;$('directoryForm').reset();clearPhoto();$('directoryRole').disabled=false;$('directorySlug').readOnly=false;
    $('directorySubmit').textContent='ذخیره اطلاعات عضو';note('directoryNotice','');}
  function fillForm(row){selectedId=row.id;clearPhoto();
-   for(const [id,value] of [['directoryName',row.display_name],['directorySlug',row.owner_slug],['directorySpecialty',row.specialty],['directorySkills',row.skills],['directoryBio',row.bio]])$(id).value=value||'';
+   const extra=row.extra&&typeof row.extra==='object'&&!Array.isArray(row.extra)?row.extra:{};
+   for(const [id,value] of [['directoryName',row.display_name],['directorySlug',row.owner_slug],['directorySpecialty',row.specialty],['directorySkills',row.skills],['directoryBio',row.bio],
+       ['directoryExperience',extra.experience_years],['directoryWorkStyle',extra.work_style],['directoryPortfolioUrl',extra.portfolio_url],['directoryAchievements',extra.achievements]])
+     $(id).value=value??'';
    $('directoryRole').value=row.role;$('directoryRole').disabled=true;$('directorySlug').readOnly=true;
    $('directoryPublished').checked=!!row.published;$('directorySubmit').textContent='ثبت تغییرات این عضو';
    if(row.image_path){const src=api.publicDirectoryPhoto(row.image_path);if(src){$('directoryPhotoPreview').src=src;$('directoryPhotoPreview').hidden=false;}}

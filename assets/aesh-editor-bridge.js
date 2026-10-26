@@ -74,6 +74,8 @@
    stateObserver.observe(document.body,{attributes:true,attributeFilter:['class']});
    document.body.classList.toggle('aesh-inline-panel',true);
    syncBack();update();
+   // The parent opens the login dialog only AFTER this iframe is initialized.
+   send('ready');
    // Editor-export prompts for the initial password shortly after site-ready.
    setTimeout(update,250);
  }

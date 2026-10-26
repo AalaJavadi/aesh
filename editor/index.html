@@ -2923,7 +2923,7 @@ function changeLogo(){
 ========================================================= */
 function toggleEdit(){
   if(canEdit()){$('editPanel').classList.toggle('show');Auth.touch();return;}
-  var firstUse=false;
+  var firstUse=!Auth.isHealthy();
   $('loginTitle').textContent=firstUse?'ساخت رمز ویرایش در این مرورگر':'ورود به حالت ویرایش';
   $('loginSubtitle').textContent=firstUse
     ?'برای ویرایش در همین مرورگر یک رمز حداقل ۱۲ کاراکتری با حروف و عدد بسازید. انتشار نهایی فقط از طریق GitHub انجام می‌شود.'
@@ -2949,7 +2949,7 @@ document.addEventListener('keydown',function(e){
 },true);
 async function checkPw(){
   var v=$('pwInput').value,btn=$('loginModal').querySelector('.btn-primary');
-  var firstUse=false,err=$('loginErr');
+  var firstUse=!Auth.isHealthy(),err=$('loginErr');
   if(firstUse){
     if(!passwordIsStrong(v)){err.textContent='رمز باید حداقل ۱۲ کاراکتر و شامل حروف و عدد باشد.';err.classList.add('show');return;}
     if(v!==$('pwSetupConfirm').value){err.textContent='تکرار رمز یکسان نیست.';err.classList.add('show');return;}

@@ -37,6 +37,11 @@ const EDITOR_CHANNEL='aesh-inline-editor-v1';
 function inlineEditorMessage(e){
  if(!inlineFrame||e.source!==inlineFrame.contentWindow||e.origin!==location.origin)return;
  const msg=e.data;if(!msg||msg.channel!==EDITOR_CHANNEL)return;
+  if(msg.type==='ready'){
+    inlineShell.hidden=false;
+    inlineFrame.contentWindow?.postMessage({channel:EDITOR_CHANNEL,type:'open'},location.origin);
+    return;
+  }
  if(msg.type==='draft-saved'){
    const url=pendingEditorNavigation;pendingEditorNavigation=null;
    if(msg.ok&&url)location.assign(url);
@@ -72,6 +77,10 @@ function openInlineEditor(){
  let path=document.body.dataset.aeshPath||location.pathname;
  const baseRoot=window.__AESH_BASE_PATH__||'';
  if(baseRoot&&path.startsWith(baseRoot+'/'))path=path.slice(baseRoot.length);
+ // A frame load is a fallback; the bridge's ready handshake is authoritative.
+ inlineFrame.addEventListener('load',()=>{
+   inlineFrame.contentWindow?.postMessage({channel:EDITOR_CHANNEL,type:'open'},location.origin);
+ });
  inlineFrame.src=sitePath('editor/')+'?view='+encodeURIComponent(path||'/')+'&inline=1';
 }
 window.toggleEdit=openInlineEditor;

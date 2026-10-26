@@ -119,6 +119,10 @@
           <label for="directorySpecialty">تخصص</label><input id="directorySpecialty" maxlength="160">
           <label for="directorySkills">مهارت‌ها</label><input id="directorySkills" maxlength="320">
           <label for="directoryBio">بیوگرافی</label><textarea id="directoryBio" maxlength="700" rows="4"></textarea>
+          <div class="aesh-form-split"><div class="field"><label for="directoryExperience">سابقه فعالیت (سال)</label><input id="directoryExperience" type="number" min="0" max="60" step="1" inputmode="numeric" placeholder="اختیاری"></div><div class="field"><label for="directoryWorkStyle">سبک یا زمینه اصلی فعالیت</label><input id="directoryWorkStyle" maxlength="120" placeholder="مثلاً طراحی پوستر تبلیغاتی"></div></div>
+          <label for="directoryPortfolioUrl">لینک عمومی نمونه‌کارها (اختیاری، HTTPS)</label><input id="directoryPortfolioUrl" type="url" maxlength="400" inputmode="url" dir="ltr" placeholder="https://example.com/portfolio">
+          <label for="directoryAchievements">سوابق و دستاوردها (اختیاری)</label><textarea id="directoryAchievements" maxlength="300" rows="2" placeholder="مسابقات، پروژه‌های شاخص یا افتخارات"></textarea>
+          <p class="secondary small">این اطلاعات فقط در پروفایل عمومیِ منتشرشده نمایش داده می‌شوند. شماره تماس و اطلاعات خصوصی وارد نکنید. ایجاد این پروفایل به‌تنهایی حساب ورود نمی‌سازد.</p>
           <label for="directoryPhoto">تصویر پروفایل (اختیاری)</label><input id="directoryPhoto" type="file" accept="image/jpeg,image/png,image/webp"><p id="directoryPhotoText" class="secondary small">تصویر خودکار زیر ۱۰۰ کیلوبایت بهینه می‌شود.</p>
           <img id="directoryPhotoPreview" class="aesh-admin-avatar" alt="پیش‌نمایش تصویر فشرده" hidden>
           <label id="directoryPhotoOk" class="quality-confirm" hidden><input type="checkbox"> کیفیت تصویر فشرده‌شده را بررسی و تأیید می‌کنم.</label>

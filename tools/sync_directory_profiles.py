@@ -30,15 +30,41 @@ def fetch_rows():
 
 def render(record,host,base,data):
     slug=str(record['owner_slug']);role=record['role'];name=record['display_name'];identifier=str(record['id'])
-    path=str(record.get('avatar_path') or '')
+    path=str(record.get('image_path') or record.get('avatar_path') or '')
     # The media path is independently randomized on each upload (never upsert).
     photo=(host+'/storage/v1/object/public/aesh-directory/'+path) if re.fullmatch(r'[0-9a-f]{8}-[0-9a-f-]{27}\.webp',path,re.I) else ''
     item={'id':identifier,'slug':slug,'name':name,'badge':'استاد' if role=='teacher' else 'هنرجو',
         'role':record.get('specialty') or 'عضو انجمن','bio':record.get('bio') or '',
         'image':photo,'stats':[],'chart':{'items':[]},'extra':{'skills':record.get('skills') or ''}}
     node=m.profile_detail(base,item,role,data,{})
+    # Render only approved, voluntarily public professional fields. Never HTML-inject
+    # arbitrary JSONB; each value is a text node and links are HTTPS-only.
+    extra=record.get('extra') if isinstance(record.get('extra'),dict) else {}
+    details=[]
+    years=extra.get('experience_years')
+    if type(years) is int and 0 <= years <= 60:
+        details.append(('سابقه فعالیت',str(years)+' سال'))
+    for label,key in (('سبک کاری','work_style'),('دستاوردها','achievements')):
+        val=extra.get(key)
+        if isinstance(val,str) and val.strip():details.append((label,val.strip()[:300]))
+    if details:
+        section=base.new_tag('section');section['class']='aesh-directory-additional'
+        section.append(base.new_tag('h2'))
+        section.h2.string='اطلاعات حرفه‌ای'
+        for label,value in details:
+            part=base.new_tag('p');part.string=label+': '+value;section.append(part)
+        node.append(section)
+    link=extra.get('portfolio_url')
+    if isinstance(link,str) and len(link) <= 400:
+        from urllib.parse import urlsplit
+        url=urlsplit(link)
+        if url.scheme=='https' and url.hostname and not url.username and not url.password:
+            anchor=base.new_tag('a',href=link)
+            anchor['target']='_blank';anchor['rel']='noopener noreferrer'
+            anchor.string='مشاهده نمونه‌کارهای عمومی';node.append(anchor)
     route='/'+role+'/'+slug+'/'
-    html=m.base_html(base,node,route,role,(name+' | AESH',item['bio'] or name,photo or '/favicon.png'),data,None,item)
+    fallback='https://aesh.ir/assets/social/'+('teachers' if role=='teacher' else 'students')+'.jpg'
+    html=m.base_html(base,node,route,role,(name+' | AESH',item['bio'] or name,photo or fallback),data,None,item)
     return html.replace('</body>',MARKER+'</body>')
 
 def run(records,host):

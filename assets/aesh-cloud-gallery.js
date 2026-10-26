@@ -3,7 +3,15 @@
  'use strict';
  const api=window.AESHCore,root=document.getElementById('portfolioGrid');
  if(!root||!api||!api.configured())return;
- let pending=false,latest=0;
+ root.dataset.aeshInitialSync='pending';
+ root.setAttribute('aria-busy','true');
+ const firstSyncStatus=document.createElement('p');
+ firstSyncStatus.id='aeshGallerySyncStatus';
+ firstSyncStatus.className='aesh-gallery-sync-status';
+ firstSyncStatus.setAttribute('role','status');
+ firstSyncStatus.textContent='در حال دریافت جدیدترین نمونه‌کارهای منتشرشده…';
+ root.before(firstSyncStatus);
+ let pending=false,latest=0,firstSync=true;
  function valid(r){return r&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(r.id||''))&&
    ['teacher','student'].includes(r.owner_role)&&['aesh-member-works','aesh-owner-works'].includes(r.bucket_id)&&
    r.slug&&/^[\w\u0600-\u06ff]+(?:-[\w\u0600-\u06ff]+)*$/u.test(r.slug)&&
@@ -42,8 +50,17 @@
      latest=Date.now();
      if(window.aeshRedrawPortfolio)window.aeshRedrawPortfolio();
      document.dispatchEvent(new CustomEvent('aesh:cloud-published',{detail:{ids:[...ids]}}));
-   }catch(err){console.warn('AESH gallery remains unchanged on server error:',err.message);}
-   finally{pending=false;}
+   }catch(err){
+     console.warn('AESH gallery remains unchanged on server error:',err.message);
+     if(firstSync) firstSyncStatus.textContent='ارتباط با آثار آنلاین برقرار نشد؛ آثار قدیمیِ موجود نمایش داده می‌شوند.';
+   }finally{
+     if(firstSync){firstSync=false;root.dataset.aeshInitialSync='complete';
+       root.removeAttribute('aria-busy');
+       // Keep an RPC error visible; remove only the normal loading message.
+       if(firstSyncStatus.textContent.startsWith('در حال دریافت'))firstSyncStatus.remove();
+     }
+     pending=false;
+   }
  }
  refresh(true);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});window.addEventListener('focus',()=>refresh());
 })();

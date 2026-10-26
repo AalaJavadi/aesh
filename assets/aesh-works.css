@@ -3,3 +3,10 @@
 .portfolio-card.aesh-no-work-slug .portfolio-card-more{opacity:.85}
 .portfolio-card-link[role=button]{cursor:pointer}
 .aesh-online-status{flex:1 1 100%;font-size:.72rem;color:#ad6300;line-height:1.7;margin:9px 0 0}
+
+/* AESH v5.1: avoid displaying old cards before the first Supabase reconciliation. */
+#portfolioGrid[data-aesh-initial-sync="pending"] { min-height: 280px; }
+#portfolioGrid[data-aesh-initial-sync="pending"] > .portfolio-card { display:none!important; }
+.aesh-gallery-sync-status { margin:18px 0; padding:18px 22px; border-radius:16px;
+  background:var(--surface,#fff); color:var(--muted,#64748b); text-align:center;
+  border:1px solid var(--border,#e2e8f0); font-weight:600; }

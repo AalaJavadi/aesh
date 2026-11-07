@@ -1,0 +1,15 @@
+/* Static HTML for approved CF CMS public profiles/works. Visuals match AESH gold + white. */
+.aesh-cms-detail{padding:35px 0 90px;max-width:1060px}.aesh-cms-crumb{font-size:.87rem;color:#69717c;margin:10px 0 24px}
+.aesh-cms-crumb a{color:inherit;text-decoration:none}.aesh-cms-profile{padding:clamp(20px,4vw,45px);background:#fff;border:1px solid #e8e6dd;border-radius:24px;box-shadow:0 14px 45px #2125290b}
+.aesh-cms-profile h1{font-size:clamp(1.6rem,4vw,2.35rem);margin:12px 0}.aesh-cms-profile h2{font-size:1.15rem;margin:12px 0}.aesh-cms-profile p{line-height:2.1;color:#555d64}
+.aesh-cms-hero{display:grid;grid-template-columns:minmax(170px,290px) minmax(0,1fr);gap:30px;align-items:start}
+.aesh-cms-hero img,.aesh-cms-no-image{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:19px}
+.aesh-cms-no-image{background:#fff3cd;display:grid;place-items:center;color:#644b16;font-size:2rem;font-weight:900}
+.aesh-cms-tag{display:inline-block;background:#fff3cb;border-radius:30px;color:#79530c;padding:5px 13px;font-size:.85rem;font-weight:800}
+.aesh-cms-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:13px;margin:28px 0}
+.aesh-cms-stats>div{border:1px solid #efe5d2;border-radius:13px;padding:14px;text-align:center;display:grid;gap:6px}
+.aesh-cms-stats strong{font-size:1.55rem;color:#4c3713}.aesh-cms-stats span{font-size:.85rem;color:#5f656b}
+.aesh-cms-bottom{display:grid;grid-template-columns:1fr 1fr;gap:35px}.aesh-cms-bottom dl{display:grid;grid-template-columns:auto 1fr;gap:10px 20px;line-height:1.8}.aesh-cms-bottom dt{font-weight:800}.aesh-cms-bottom dd{margin:0}
+.aesh-cms-chart{margin:15px 0}.aesh-cms-chart span{font-size:.88rem}.aesh-cms-chart>div{height:11px;overflow:hidden;background:#f3e5bf;border-radius:12px;margin-top:5px}.aesh-cms-chart b{display:block;height:100%;background:linear-gradient(90deg,#d99d05,#f5b301);border-radius:12px}
+.aesh-cms-work{text-align:center;margin:28px 0}.aesh-cms-work img{max-width:100%;max-height:none;height:auto;border-radius:16px}
+@media(max-width:680px){.aesh-cms-hero,.aesh-cms-bottom{grid-template-columns:1fr}.aesh-cms-hero img,.aesh-cms-hero .aesh-cms-no-image{max-width:300px;aspect-ratio:1}.aesh-cms-detail{padding:22px 0 55px}}

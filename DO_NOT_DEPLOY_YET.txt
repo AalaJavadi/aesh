@@ -1,3 +1,14 @@
-PRODUCTION HOLD: this package is an unverified candidate.
-No GitHub Actions deployment workflow is included.
-Do not publish to aesh.ir or run SQL in Production until 30 live TEST checks, privacy, admin auth, storage and benchmark are PASS.
+AESH 5.0 | STAGING CANDIDATE — 2026-11-06
+
+The full website ZIP was extended from the previously delivered version.
+Cloudflare Worker/D1/R2/Access and new member/admin portals are implemented
+and tested with MOCK identities, D1 and R2, but are NOT activated on real accounts.
+Supabase legacy auth/public RPC remains enabled by default. Never cut it off
+or upload private backups to public GitHub. Cloud-only Pages publication is
+strictly blocked until restore-tested backups and all UUID mappings are approved.
+
+DO NOT PUSH main NOW. Create aesh-rescue-test branch in GitHub Desktop,
+replace files, Commit and Push THAT branch to run browser checks without
+changing aesh.ir. Read HOW_TO_INSTALL_FA.md and FINAL_TEST_REPORT.md.
+
+Nothing was deployed to production from this environment.

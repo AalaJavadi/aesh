@@ -3,13 +3,12 @@
  'use strict';
  const api=window.AESHCore,root=document.getElementById('portfolioGrid');
  if(!root||!api||!api.configured())return;
- root.dataset.aeshInitialSync='pending';
- root.setAttribute('aria-busy','true');
+ root.dataset.aeshInitialSync='background';
  const firstSyncStatus=document.createElement('p');
  firstSyncStatus.id='aeshGallerySyncStatus';
  firstSyncStatus.className='aesh-gallery-sync-status';
  firstSyncStatus.setAttribute('role','status');
- firstSyncStatus.textContent='در حال دریافت جدیدترین نمونه‌کارهای منتشرشده…';
+ firstSyncStatus.textContent='';
  root.before(firstSyncStatus);
  let pending=false,latest=0,firstSync=true;
  function valid(r){return r&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(r.id||''))&&
@@ -52,15 +51,18 @@
      document.dispatchEvent(new CustomEvent('aesh:cloud-published',{detail:{ids:[...ids]}}));
    }catch(err){
      console.warn('AESH gallery remains unchanged on server error:',err.message);
-     if(firstSync) firstSyncStatus.textContent='ارتباط با آثار آنلاین برقرار نشد؛ آثار قدیمیِ موجود نمایش داده می‌شوند.';
+     if(firstSync && !root.querySelector('.portfolio-card:not([data-cloud-pending="true"])'))
+       firstSyncStatus.textContent='اطلاعات آنلاین فعلاً در دسترس نیست.';
    }finally{
      if(firstSync){firstSync=false;root.dataset.aeshInitialSync='complete';
-       root.removeAttribute('aria-busy');
+       // The already published legacy cards were never marked busy.
        // Keep an RPC error visible; remove only the normal loading message.
-       if(firstSyncStatus.textContent.startsWith('در حال دریافت'))firstSyncStatus.remove();
+       if(!firstSyncStatus.textContent)firstSyncStatus.remove();
      }
      pending=false;
    }
  }
- refresh(true);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});window.addEventListener('focus',()=>refresh());
+ if('requestIdleCallback' in window)window.requestIdleCallback(()=>refresh(true),{timeout:1200});
+ else setTimeout(()=>refresh(true),350);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});window.addEventListener('focus',()=>refresh());
 })();

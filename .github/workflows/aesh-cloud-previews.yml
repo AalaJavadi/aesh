@@ -46,54 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          #!/usr/bin/env python3
-          """Synchronize BOTH editor ZIP source snapshots from checked-out, reviewed files.
-          
-          This does not disable or relax the fail-closed check; check_editor_fallback_offline.py
-          must still pass after synchronization. No network or database access is used.
-          """
-          from pathlib import Path
-          import base64
-          import json
-          import re
-          
-          root = Path('.')
-          names = json.loads((root / 'assets/aesh-package-files.json').read_text(encoding='utf-8'))
-          needed = [
-              name for name in names
-              if name.startswith(('tools/', 'sql/', 'supabase/', '.github/'))
-              or ('/' not in name and name.endswith(('.md', '.txt')))
-          ]
-          if not needed:
-              raise SystemExit('FAIL: no packaged build sources in the editor manifest')
-          
-          payload = {}
-          for name in needed:
-              item = root / name
-              if not item.is_file():
-                  raise SystemExit('FAIL: source listed in editor manifest is missing: ' + name)
-              payload[name] = base64.b64encode(item.read_bytes()).decode('ascii')
-          
-          for filename, regex in (
-              ('assets/aesh-editor-immutable.js', r'window\.AESH_IMMUTABLE_FILES=(\{.*?\});'),
-              ('editor/index.html', r'var AESH_EDITOR_EMBEDDED_FILES=(\{.*?\});'),
-          ):
-              item = root / filename
-              original = item.read_text(encoding='utf-8')
-              match = re.search(regex, original, re.S)
-              if not match:
-                  raise SystemExit('FAIL: editor mapping not found: ' + filename)
-              mapped = json.loads(match.group(1))
-              changed = [name for name, encoded in payload.items() if mapped.get(name) != encoded]
-              for name, encoded in payload.items():
-                  mapped[name] = encoded
-              if changed:
-                  encoded_map = json.dumps(mapped, ensure_ascii=False, separators=(',', ':'))
-                  updated = original[:match.start(1)] + encoded_map + original[match.end(1):]
-                  item.write_text(updated, encoding='utf-8')
-              print(f'PASS: {filename}: {len(changed)} refreshed / {len(needed)} source entries', flush=True)
-          PY
+          python tools/sync_editor_embedded_sources.py
 
       - name: Test editor ZIP fallback (offline)
         run: python tools/check_editor_fallback_offline.py

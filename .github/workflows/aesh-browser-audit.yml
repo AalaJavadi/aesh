@@ -1,0 +1,31 @@
+name: AESH - Manual public browser speed audit (NO DEPLOY)
+
+on:
+  workflow_dispatch:
+
+# Read-only diagnostics, separated from all production publishing jobs.
+permissions:
+  contents: read
+
+jobs:
+  public-browser-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated browser test only
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Audit existing public site with real desktop and mobile Chromium
+        run: python qa/audit_live_browser.py --output browser_audit_results/results.json
+      - name: Preserve real findings even if a page failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aesh-live-readonly-browser-audit
+          path: browser_audit_results/results.json
+          if-no-files-found: warn

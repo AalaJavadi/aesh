@@ -1,10 +1,19 @@
 /* Member-only profile editor. Only editable fields: avatar and biography. */
 (function () {
   'use strict';
+// Non-critical remote font/icon CSS must never block initial paint.
+function aeshActivateLateCss() {
+  for (const link of document.querySelectorAll('link[data-aesh-noncritical-css]')) link.media = 'all';
+}
+if (document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', aeshActivateLateCss, { once: true });
+else aeshActivateLateCss();
+
   const api = window.AESHCore;
   const $ = id => document.getElementById(id);
   let me = null;
   let defaults = {};
+  let defaultsPromise = null;
   let selected = null;
   let previewUrl = null;
   let originalAvatar = null;
@@ -36,6 +45,21 @@
       defaults = await response.json();
     } catch (_) { defaults = {}; }
   }
+  function loadDefaultsFor(profile) {
+    if (profile.bio != null && profile.avatar_path) return;
+    if (!defaultsPromise) defaultsPromise = loadDefaultBios();
+    defaultsPromise.then(() => {
+      if (me !== profile) return;
+      const base = defaults[profile.role + ':' + profile.owner_slug] || {};
+      if (profile.bio == null && !$('bio').value && document.activeElement !== $('bio')) {
+        $('bio').value = String(base.bio || '');
+        counter();
+      }
+      if (!profile.avatar_path && !selected && !previewUrl && base.image) {
+        setPreview(base.image);
+      }
+    }).catch(() => {});
+  }
   async function showDashboard(profile) {
     me = profile;
     document.body.classList.add('aesh-signed-in');
@@ -52,6 +76,7 @@
     $('avatarFileName').textContent = 'هنوز تصویری انتخاب نشده است';
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = null; selected = null; avatarRequest++;avatarConfirmed=false;avatarQualityBox().hidden=true;counter();
+    loadDefaultsFor(profile);
   }
   function showLogin() {
     window.dispatchEvent(new Event('aesh:member-logout'));
@@ -93,7 +118,6 @@
   }
   async function init() {
     if (!api) { notice('فایل‌های پنل کامل بارگذاری نشده‌اند.', true); return; }
-    await loadDefaultBios();
     $('bio').addEventListener('input', counter);
     avatarQualityBox();
     $('avatar').addEventListener('change', () => chooseAvatar($('avatar').files[0] || null));
@@ -136,11 +160,23 @@
     if (!api.configured()) {
       show('setup', true); $('loginButton').disabled = true; return;
     }
+    let restoreTimer;
     try {
-      const profile = await api.myProfile(true);
-      if (profile) { await showDashboard(profile); return; }
-    } catch (error) { notice('نشست قبلی معتبر نبود؛ دوباره وارد شوید.', true); }
-    showLogin();
+      const restore = api.myProfile(true).then(
+        profile => ({ profile }), error => ({ error })
+      );
+      const outcome = await Promise.race([
+        restore,
+        new Promise(resolve => {
+          restoreTimer = setTimeout(() => resolve({ timedOut: true }), 6000);
+        })
+      ]);
+      if (me) return; // The user may have signed in while session recovery ran.
+      if (outcome.profile) { await showDashboard(outcome.profile); return; }
+      if (outcome.timedOut) notice('ارتباط با سرور ورود کند است؛ می‌توانید فرم ورود را امتحان کنید.', true);
+      else if (outcome.error) notice('نشست قبلی بررسی نشد؛ دوباره وارد شوید.', true);
+    } finally { clearTimeout(restoreTimer); }
+    if (!me) showLogin();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

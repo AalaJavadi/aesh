@@ -19,7 +19,7 @@ REQUIRED_HTML = (
     'editor/index.html', 'directory-profile/index.html',
     'members/index.html', 'studio/index.html',
     'teachers/index.html', 'students/index.html',
-    'portfolio/index.html', 'about/index.html',
+    'portfolio/index.html', 'blog/index.html', 'about/index.html',
     'courses/index.html', 'events/index.html',
     'news/index.html', 'faq/index.html', 'rules/index.html',
 )
@@ -29,6 +29,7 @@ REQUIRED_ASSETS = (
     'assets/aesh-editor-export.js', 'assets/aesh-editor-immutable.js',
     'assets/aesh-static.js', 'assets/aesh-image.js',
     'assets/aesh-site.css', 'assets/aesh-cloud-gallery.js',
+    'assets/aesh-blog.css', 'assets/aesh-cms-pages.css',
 )
 ROUTED_DIRS = ('teacher', 'student', 'work', 'course', 'featured')
 REQUIRED_TOP = ('sitemap.xml', 'robots.txt', 'sw.js', '.nojekyll', 'favicon.png')

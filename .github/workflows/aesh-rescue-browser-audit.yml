@@ -1,0 +1,34 @@
+name: AESH - Real browser check (SAFE staging branch, no deploy)
+
+on:
+  push:
+    branches: [aesh-rescue-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: ${{ github.repository == 'AalaJavadi/aesh' && github.ref == 'refs/heads/aesh-rescue-test' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install testing-only Chromium (no changes to site)
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Measure internal routes on desktop/mobile, normal and Supabase blocked
+        run: node tools/audit_pages_browser.mjs
+      - name: Upload reproducible screenshots and timing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aesh-browser-audit
+          path: artifacts/browser-audit/
+          if-no-files-found: warn
+          retention-days: 7

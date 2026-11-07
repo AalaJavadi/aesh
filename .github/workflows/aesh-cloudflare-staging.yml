@@ -1,0 +1,74 @@
+name: AESH - Provision and test Cloudflare STAGING only
+
+on:
+  push:
+    branches: [aesh-rescue-test]
+  workflow_dispatch:
+
+# DISABLED BY DEFAULT. Owner must set AESH_STAGING_ENABLED=yes to opt in.
+# It only runs on a dedicated staging branch; never deploys Pages or changes DNS.
+permissions:
+  contents: read
+
+concurrency:
+  group: aesh-cloudflare-staging-only
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: ${{ github.repository == 'AalaJavadi/aesh' && github.ref == 'refs/heads/aesh-rescue-test' && vars.AESH_STAGING_ENABLED == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: aesh-cloudflare-staging
+    defaults:
+      run:
+        working-directory: infra/cloudflare
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.AESH_CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.AESH_CLOUDFLARE_ACCOUNT_ID }}
+      AESH_CLOUDFLARE_API_TOKEN: ${{ secrets.AESH_CLOUDFLARE_API_TOKEN }}
+      AESH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.AESH_CLOUDFLARE_ACCOUNT_ID }}
+      AESH_ACCESS_TEAM: ${{ vars.AESH_ACCESS_TEAM }}
+      AESH_ACCESS_AUD: ${{ vars.AESH_ACCESS_AUD }}
+      AESH_BOOTSTRAP_ADMIN_EMAIL: ${{ secrets.AESH_BOOTSTRAP_ADMIN_EMAIL }}
+      AESH_CMS_PUBLISH_TOKEN: ${{ secrets.AESH_CMS_PUBLISH_TOKEN }}
+    steps:
+      - name: Check out the EXISTING complete website
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Access JWT, role and media guards without production
+        working-directory: .
+        run: node --no-warnings tools/test_cloudflare_cms.mjs
+      - name: Require private staging credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${AESH_BOOTSTRAP_ADMIN_EMAIL:-}" || { echo 'Missing bootstrap admin email secret'; exit 2; }
+          test -n "${AESH_CMS_PUBLISH_TOKEN:-}" || { echo 'Missing CMS publish token secret'; exit 2; }
+          test "${#AESH_CMS_PUBLISH_TOKEN}" -ge 32 || { echo 'CMS token too short'; exit 2; }
+          node scripts/provision-preview.mjs --self-test
+      - name: Install Wrangler staging deploy tool
+        run: npm install --no-save --no-audit --no-fund wrangler@4.102.0
+      - name: Provision private preview D1 and R2 without changing DNS
+        run: node scripts/provision-preview.mjs
+      - name: Apply D1 migrations to preview database only
+        run: npx wrangler d1 migrations apply aesh-cms-preview --remote --config wrangler.generated.toml
+      - name: Deploy Worker to workers.dev preview only
+        run: npx wrangler deploy --config wrangler.generated.toml
+      - name: Register admin bootstrap email (private Worker secret)
+        shell: bash
+        run: printf '%s' "$AESH_BOOTSTRAP_ADMIN_EMAIL" | npx wrangler secret put BOOTSTRAP_ADMIN_EMAIL --config wrangler.generated.toml
+      - name: Register CMS GitHub build secret (private Worker secret)
+        shell: bash
+        run: printf '%s' "$AESH_CMS_PUBLISH_TOKEN" | npx wrangler secret put PUBLISH_TOKEN --config wrangler.generated.toml
+      - name: Live preview smoke check (read-only health and unauthorized access)
+        run: node scripts/smoke-preview.mjs
+      - name: Explain required access protection before use
+        shell: bash
+        run: |
+          echo 'PREVIEW ONLY: Cloudflare Worker/D1/R2 deployed without DNS changes.'
+          echo 'NEXT: verify Cloudflare Access restriction on /control/* and /member/*.'
+          echo 'Public GitHub Pages remains unchanged. Publication dispatch remains DISABLED.'

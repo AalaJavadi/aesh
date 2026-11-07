@@ -67,17 +67,32 @@
     })().finally(() => { renewing = null; });
     return renewing;
   }
+  const publicReadOnlyRpc = new Set(['aesh_public_works','aesh_public_profiles','aesh_public_directory','aesh_public_reviews']);
   async function call(path, options = {}, privateCall = false, retry = false) {
     if (!enabled) throw new Error(needSetup());
     if (privateCall && !authenticated()) throw new Error('برای این بخش باید وارد حساب شوید.');
-    if (authenticated() && (!session.expires_at || session.expires_at < Math.floor(Date.now() / 1000) + 90)) await renew();
+    // Anonymous public-only RPC reads must not wait for refresh of a saved login.
+    // Never apply this timeout or anonymous path to private reads or writes.
+    const publicRpcName = /^\/rest\/v1\/rpc\/(aesh_[a-z0-9_]+)$/.exec(path)?.[1];
+    const publicRead = !privateCall && options.method === 'POST' && publicReadOnlyRpc.has(publicRpcName);
+    if (!publicRead && authenticated() && (!session.expires_at || session.expires_at < Math.floor(Date.now() / 1000) + 90)) await renew();
     const headers = new Headers(options.headers || {});
     headers.set('apikey', publicKey);
-    if (authenticated()) headers.set('Authorization', 'Bearer ' + session.access_token);
+    if (!publicRead && authenticated()) headers.set('Authorization', 'Bearer ' + session.access_token);
     if (options.json !== undefined) { headers.set('Content-Type', 'application/json'); options.body = JSON.stringify(options.json); }
-    const response = await fetch(url + path, { ...options, mode: 'cors', cache: 'no-store', headers });
-    const type = response.headers.get('content-type') || '';
-    const result = type.includes('json') ? await response.json().catch(() => ({})) : await response.text();
+    // Only the strictly whitelisted, non-mutating public RPCs have bounded waits.
+    const controller = publicRead ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 4200) : null;
+    let response, result;
+    try {
+      response = await fetch(url + path, { ...options, mode: 'cors', cache: 'no-store', headers,
+        ...(controller ? { signal: controller.signal } : {}) });
+      const type = response.headers.get('content-type') || '';
+      result = type.includes('json') ? await response.json().catch(() => ({})) : await response.text();
+    } catch (error) {
+      if (controller?.signal.aborted) throw new Error('پاسخ اطلاعات عمومی آنلاین به‌موقع نرسید؛ محتوای آماده سایت همچنان در دسترس است.');
+      throw error;
+    } finally { if (timer !== null) clearTimeout(timer); }
     if (!response.ok) {
       if (response.status === 401 && privateCall && !retry && authenticated()) {
         await renew(); return call(path, options, privateCall, true);

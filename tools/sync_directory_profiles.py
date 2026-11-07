@@ -36,6 +36,22 @@ def render(record,host,base,data):
     item={'id':identifier,'slug':slug,'name':name,'badge':'استاد' if role=='teacher' else 'هنرجو',
         'role':record.get('specialty') or 'عضو انجمن','bio':record.get('bio') or '',
         'image':photo,'stats':[],'chart':{'items':[]},'extra':{'skills':record.get('skills') or ''}}
+    # Public stats and performance are owner-approved JSONB fields; validate types
+    # before building independent, server-rendered HTML. Never trust raw HTML.
+    extra=record.get('extra') if isinstance(record.get('extra'),dict) else {}
+    stats=extra.get('stats')
+    if isinstance(stats,list):
+        item['stats']=[{'label':x['label'][:55],'value':x['value'][:30]} for x in stats[:4]
+          if isinstance(x,dict) and isinstance(x.get('label'),str) and isinstance(x.get('value'),str)
+          and x['label'].strip() and x['value'].strip()]
+    metrics=extra.get('chart_items')
+    if isinstance(metrics,list):
+        item['chart']={'title':str(extra.get('chart_title') or 'نمودار عملکرد')[:90],
+          'items':[{'label':x['label'][:65],'value':x['value']} for x in metrics[:4]
+            if isinstance(x,dict) and isinstance(x.get('label'),str) and x['label'].strip()
+            and type(x.get('value')) in (int,float) and 0<=x['value']<=100]}
+    item['extra'].update({k:str(extra[k])[:100] for k in ('joinDate','rank','availability')
+                          if isinstance(extra.get(k),str)})
     node=m.profile_detail(base,item,role,data,{})
     # Render only approved, voluntarily public professional fields. Never HTML-inject
     # arbitrary JSONB; each value is a text node and links are HTTPS-only.

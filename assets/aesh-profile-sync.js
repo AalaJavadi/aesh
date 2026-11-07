@@ -5,7 +5,7 @@
  const inList=path==='/teachers/'||path==='/students/';
  const parts=path.split('/').filter(Boolean);const detail=parts[0]==='teacher'||parts[0]==='student';
  if(!inList&&!detail)return;
- api.rpc('aesh_public_profiles').then(rows=>{if(!Array.isArray(rows))return;
+ function refreshProfiles(){api.rpc('aesh_public_profiles').then(rows=>{if(!Array.isArray(rows))return;
    const role=inList?(path==='/teachers/'?'teacher':'student'):parts[0];
    for(const row of rows){if(row?.role!==role||!row.owner_slug)continue;
      const bio=typeof row.bio==='string'?row.bio:null,photo=api.publicAvatar(row.avatar_path,row.updated_at);
@@ -20,5 +20,7 @@
        if(photo){const img=card.querySelector('.person-media img');if(img)img.src=photo;}
      }
    }
- }).catch(err=>console.warn('AESH profile sync unavailable:',err.message));
+ }).catch(err=>console.warn('AESH profile sync unavailable:',err.message));}
+ if('requestIdleCallback' in window)window.requestIdleCallback(refreshProfiles,{timeout:1600});
+ else setTimeout(refreshProfiles,350);
 })();

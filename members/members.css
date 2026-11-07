@@ -231,3 +231,15 @@ svg{flex:none}
 .aesh-admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 .aesh-form-split{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
 .aesh-admin-avatar{max-width:200px;max-height:180px;border-radius:12px;object-fit:contain;margin:10px 0}
+
+/* Editorial profile fields and genuine local preview (public style preserved) */
+.aesh-metrics{border:1px solid var(--border,#d9dbe1);border-radius:16px;padding:14px;margin:14px 0;min-width:0}
+.aesh-metrics legend{font-weight:850;padding:0 9px}.aesh-metrics .field{min-width:0}
+.aesh-form-preview{background:#fffaf0;border:1px solid #f3d47d;border-radius:18px;padding:20px;margin:15px 0}
+.aesh-form-preview h3,.aesh-form-preview h4{margin:0 0 10px}.aesh-form-preview p{line-height:1.9}
+.aesh-preview-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:9px;margin:15px 0}
+.aesh-preview-stats>div{padding:12px;background:#fff;border:1px solid #e8dcbd;border-radius:12px;display:grid;gap:4px;text-align:center}
+.aesh-preview-stats strong{font-size:1.3rem}.aesh-preview-stats span{font-size:.82rem}
+.aesh-preview-metric{margin:12px 0}.aesh-preview-metric>span{display:block;margin-bottom:5px}
+.aesh-preview-metric>div{height:10px;border-radius:9px;background:#efe2bd;overflow:hidden}
+.aesh-preview-metric>div>div{height:100%;border-radius:9px;background:#f5b301}

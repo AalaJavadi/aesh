@@ -25,7 +25,9 @@
    }
    card.append(link,media,body);root.append(card);
  }
- api.publicDirectory().then(rows=>{if(!Array.isArray(rows))return;rows.filter(x=>x.role===role).forEach(render);
+ function refreshDirectory(){api.publicDirectory().then(rows=>{if(!Array.isArray(rows))return;rows.filter(x=>x.role===role).forEach(render);
    if(typeof window.filterPeople==='function')window.filterPeople(root.id);
- }).catch(err=>{console.warn('AESH public member directory unavailable:',err.message);});
+ }).catch(err=>{console.warn('AESH public member directory unavailable:',err.message);});}
+ if('requestIdleCallback' in window)window.requestIdleCallback(refreshDirectory,{timeout:1600});
+ else setTimeout(refreshDirectory,350);
 })();

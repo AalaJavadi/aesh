@@ -40,22 +40,63 @@
      ['achievements',$('directoryAchievements').value.trim().slice(0,300)||null]]){
      if(value===null)delete extra[key];else extra[key]=value;
    }
+   for(const [key,id] of [['joinDate','directoryJoinDate'],['rank','directoryRank'],['availability','directoryAvailability'],['rubika','directoryRubika']]){
+     const value=$(id).value.trim();
+     if(key==='rubika'&&value){const url=new URL(value);if(url.protocol!=='https:'||url.hostname!=='rubika.ir'||url.username||url.password)throw new Error('آدرس روبیکا باید https://rubika.ir/... باشد.');}
+     if(value)extra[key]=value;else delete extra[key];
+   }
+   const stats=[];
+   for(let i=1;i<=4;i++){
+     const label=$('directoryStat'+i+'Label').value.trim(),value=$('directoryStat'+i+'Value').value.trim();
+     if(label||value){if(!label||!value)throw new Error('عنوان و مقدار هر کارت آمار باید هر دو کامل باشند.');stats.push({label,value});}
+   }
+   if(stats.length)extra.stats=stats;else delete extra.stats;
+   const metrics=[];
+   for(let i=1;i<=4;i++){
+     const label=$('directoryMetric'+i+'Label').value.trim(),v=$('directoryMetric'+i+'Value').value.trim();
+     if(label||v){if(!label||!v||!/^(100|[1-9]?[0-9])$/.test(v))throw new Error('هر شاخص باید عنوان و درصد صحیح از صفر تا صد داشته باشد.');metrics.push({label,value:Number(v)});}
+   }
+   if(metrics.length){extra.chart_items=metrics;extra.chart_title=$('directoryChartTitle').value.trim()||'نمودار عملکرد';}
+   else{delete extra.chart_items;delete extra.chart_title;}
    return {p_id:selectedId,p_role:role,p_owner_slug:slug,p_display_name:name,
      p_specialty:$('directorySpecialty').value.trim(),p_skills:$('directorySkills').value.trim(),p_bio:$('directoryBio').value.trim(),
      p_image_path:old?.image_path||null,p_published:$('directoryPublished').checked,
      p_extra:extra};
  }
- function resetForm(){selectedId=null;$('directoryForm').reset();clearPhoto();$('directoryRole').disabled=false;$('directorySlug').readOnly=false;
+ function resetForm(){selectedId=null;$('directoryForm').reset();$('directoryPreview').hidden=true;clearPhoto();$('directoryRole').disabled=false;$('directorySlug').readOnly=false;
    $('directorySubmit').textContent='ذخیره اطلاعات عضو';note('directoryNotice','');}
  function fillForm(row){selectedId=row.id;clearPhoto();
    const extra=row.extra&&typeof row.extra==='object'&&!Array.isArray(row.extra)?row.extra:{};
    for(const [id,value] of [['directoryName',row.display_name],['directorySlug',row.owner_slug],['directorySpecialty',row.specialty],['directorySkills',row.skills],['directoryBio',row.bio],
-       ['directoryExperience',extra.experience_years],['directoryWorkStyle',extra.work_style],['directoryPortfolioUrl',extra.portfolio_url],['directoryAchievements',extra.achievements]])
+       ['directoryExperience',extra.experience_years],['directoryWorkStyle',extra.work_style],['directoryPortfolioUrl',extra.portfolio_url],['directoryAchievements',extra.achievements],
+       ['directoryJoinDate',extra.joinDate],['directoryRank',extra.rank],['directoryAvailability',extra.availability],['directoryRubika',extra.rubika],['directoryChartTitle',extra.chart_title]])
      $(id).value=value??'';
+   for(let i=1;i<=4;i++){
+     const stat=Array.isArray(extra.stats)?extra.stats[i-1]:null;
+     $('directoryStat'+i+'Label').value=stat?.label||'';$('directoryStat'+i+'Value').value=stat?.value||'';
+     const metric=Array.isArray(extra.chart_items)?extra.chart_items[i-1]:null;
+     $('directoryMetric'+i+'Label').value=metric?.label||'';$('directoryMetric'+i+'Value').value=metric?.value??'';
+   }
    $('directoryRole').value=row.role;$('directoryRole').disabled=true;$('directorySlug').readOnly=true;
    $('directoryPublished').checked=!!row.published;$('directorySubmit').textContent='ثبت تغییرات این عضو';
    if(row.image_path){const src=api.publicDirectoryPhoto(row.image_path);if(src){$('directoryPhotoPreview').src=src;$('directoryPhotoPreview').hidden=false;}}
    $('directoryName').focus();note('directoryNotice','در حال ویرایش پروفایل موجود؛ شناسه و URL ثابت می‌مانند.');
+ }
+ function previewDirectory(){
+   try{
+     const data=values(),extra=data.p_extra;
+     const wrap=$('directoryPreviewContent');wrap.replaceChildren();
+     const h=document.createElement('h4');h.textContent=data.p_display_name+' — '+(data.p_role==='teacher'?'استاد':'هنرجو');wrap.append(h);
+     const bio=document.createElement('p');bio.textContent=data.p_bio||'بدون بیوگرافی';wrap.append(bio);
+     const info=document.createElement('p');info.textContent=[data.p_specialty,extra.rank,extra.availability].filter(Boolean).join(' · ');wrap.append(info);
+     if(extra.stats?.length){const cards=document.createElement('div');cards.className='aesh-preview-stats';
+       for(const v of extra.stats){const item=document.createElement('div');const strong=document.createElement('strong');strong.textContent=v.value;const label=document.createElement('span');label.textContent=v.label;item.append(strong,label);cards.append(item);}wrap.append(cards);}
+     if(extra.chart_items?.length){const title=document.createElement('h5');title.textContent=extra.chart_title;wrap.append(title);
+       for(const metric of extra.chart_items){const row=document.createElement('div');row.className='aesh-preview-metric';
+         const label=document.createElement('span');label.textContent=metric.label+' ('+metric.value+'٪)';
+         const track=document.createElement('div');const bar=document.createElement('div');bar.style.width=metric.value+'%';track.append(bar);row.append(label,track);wrap.append(row);}}
+     $('directoryPreview').hidden=false;note('directoryNotice','این پیش‌نمایش محلی است؛ فقط بعد از ذخیره و ساخت HTML عمومی منتشر می‌شود.');
+   }catch(err){note('directoryNotice','پیش‌نمایش ممکن نیست: '+err.message,true);}
  }
  function item(text,cls=''){const x=document.createElement('span');x.textContent=text;x.className=cls;return x;}
  async function reloadDirectory(){
@@ -111,6 +152,7 @@
    $('directoryName').addEventListener('input',()=>{if(!selectedId)$('directorySlug').value=slugify($('directoryName').value);});
    $('directoryPhoto').addEventListener('change',pickPhoto);
    $('directoryForm').addEventListener('submit',submitDirectory);
+   $('directoryPreviewButton').addEventListener('click',previewDirectory);
    $('directoryReset').addEventListener('click',resetForm);
    $('directoryRefresh').addEventListener('click',reloadDirectory);
    $('adminReviewsRefresh').addEventListener('click',reloadReviews);

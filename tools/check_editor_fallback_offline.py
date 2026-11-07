@@ -21,7 +21,8 @@ REGEX = (
 
 def check():
     names = json.loads(MANIFEST.read_text('utf-8'))
-    needed = [p for p in names if p.startswith(('tools/', 'sql/', 'supabase/', '.github/'))
+    needed = [p for p in names if p.startswith(('tools/', 'sql/', 'supabase/', '.github/', 'infra/', 'backup/', 'content/', 'qa/'))
+              or p in ('.gitignore', '.nojekyll', 'CNAME', 'sw.js', 'blog/index.html')
               or ('/' not in p and p.endswith(('.md', '.txt')))]
     actual = [(IMMUTABLE.read_text('utf-8'), REGEX[0]),
               (EDITOR.read_text('utf-8'), REGEX[1])]
@@ -34,7 +35,7 @@ def check():
             expected = (ROOT / path).read_bytes()
             if path not in embedded or base64.b64decode(embedded[path]) != expected:
                 raise AssertionError('Missing or stale embedded source: ' + path)
-    for critical in ('tools/stage_site.py', 'tools/sync_cloud_share.py',
+    for critical in ('.nojekyll', 'CNAME', 'sw.js', 'tools/stage_site.py', 'tools/sync_cloud_share.py',
                      'tools/verify_staged_site.py', 'tools/test_staged_and_archive_offline.py',
                      'sql/aesh5/004_private_work_media.sql',
                      'supabase/functions/aesh-approved-media/index.ts'):

@@ -1,0 +1,15 @@
+# Local builds and credentials never belong in the public site repository.
+_site/
+__pycache__/
+*.pyc
+node_modules/
+.wrangler/
+.env
+.env.*
+*.local
+*.dump
+*.backup
+*.pem
+infra/cloudflare/wrangler.generated.toml
+.aesh-cms-snapshot.json
+.aesh-generated-share-pages.json

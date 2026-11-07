@@ -1,6 +1,14 @@
 /* AESH public pages. No SPA, no index.html fetch, no CMS data fetched for ordinary pages. */
 (function(){
 'use strict';
+// Non-critical remote font/icon CSS must never block initial paint.
+function aeshActivateLateCss() {
+  for (const link of document.querySelectorAll('link[data-aesh-noncritical-css]')) link.media = 'all';
+}
+if (document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', aeshActivateLateCss, { once: true });
+else aeshActivateLateCss();
+
 const $=id=>document.getElementById(id);
 const $$=(s,root=document)=>Array.from(root.querySelectorAll(s));
 const base=location.hostname.endsWith('.github.io')&&location.hostname!=='aesh-test.github.io'?'/aesh/':'/';
@@ -107,7 +115,7 @@ window.aeshRedrawPortfolio=redrawPortfolio;
 window.setPortfolioFilter=function(f){portfolioFilter=['all','teacher','student'].includes(f)?f:'all';galleryCount=12;$$('.portfolio-tab').forEach(x=>x.classList.toggle('active',x.dataset.filter===portfolioFilter));redrawPortfolio();};
 window.showMorePortfolio=function(){galleryCount+=12;redrawPortfolio();};
 let thumbObserver;
-function hydratePortfolio(){const nodes=$$('.portfolio-card-media[data-src]');function fill(el){const url=el.getAttribute('data-src');if(!url||el.querySelector('img'))return;const img=document.createElement('img');img.src=url;img.alt=el.getAttribute('data-alt')||'نمونه‌کار';img.loading='lazy';img.decoding='async';// Restore the healthy-site blurred backdrop from the same lazily loaded artwork.
+function hydratePortfolio(){const nodes=$$('.portfolio-card-media[data-src]');function fill(el){const url=el.getAttribute('data-src');if(!url||el.querySelector('img'))return;const img=document.createElement('img');img.src=url;img.alt=el.getAttribute('data-alt')||'نمونه‌کار';img.decoding='async';if(el.getBoundingClientRect().top<innerHeight*.95){img.loading='eager';img.fetchPriority='high';}else{img.loading='lazy';}// Keep first visible published artwork prioritized.
  img.addEventListener('load',()=>{el.style.setProperty('--portfolio-bg','url('+JSON.stringify(img.currentSrc||img.src)+')');el.classList.remove('portfolio-loading');});
  img.addEventListener('error',()=>{if(el.dataset.fullSrc&&img.src!==el.dataset.fullSrc)img.src=el.dataset.fullSrc},{once:true});el.appendChild(img);}
  if(!('IntersectionObserver' in window)){nodes.forEach(fill);return;}if(!thumbObserver)thumbObserver=new IntersectionObserver(es=>es.forEach(ent=>{if(ent.isIntersecting){fill(ent.target);thumbObserver.unobserve(ent.target)}}),{rootMargin:'320px'});

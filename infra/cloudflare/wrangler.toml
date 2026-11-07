@@ -1,0 +1,30 @@
+name = "aesh-cms-preview"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+# SAFE DEFAULT: do not assign aesh.ir or api.aesh.ir to this Worker.
+# Configure a TEST subdomain in the Cloudflare dashboard only after approval.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aesh-cms-preview"
+database_id = "REPLACE_WITH_NEW_TEST_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "aesh-cms-preview-private"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[vars]
+# Set the actual Cloudflare Access team hostname (not a private token) after test setup.
+ACCESS_TEAM = "REPLACE_WITH_TEAM.cloudflareaccess.com"
+ACCESS_AUD = "REPLACE_WITH_ACCESS_APPLICATION_AUD"
+# NEVER put bootstrap user IDs or publish tokens in this file.
+
+[observability]
+enabled = true

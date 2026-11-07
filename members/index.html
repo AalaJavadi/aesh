@@ -11,7 +11,7 @@
   <title>پنل اعضا | انجمن ادیتوران شایسته</title>
   <link rel="icon" href="../favicon.png" type="image/png">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" media="print" data-aesh-noncritical-css="1">
   <link rel="stylesheet" href="members.css?v=3.23">
 </head>
 <body>
@@ -126,6 +126,29 @@
           <label for="directoryPhoto">تصویر پروفایل (اختیاری)</label><input id="directoryPhoto" type="file" accept="image/jpeg,image/png,image/webp"><p id="directoryPhotoText" class="secondary small">تصویر خودکار زیر ۱۰۰ کیلوبایت بهینه می‌شود.</p>
           <img id="directoryPhotoPreview" class="aesh-admin-avatar" alt="پیش‌نمایش تصویر فشرده" hidden>
           <label id="directoryPhotoOk" class="quality-confirm" hidden><input type="checkbox"> کیفیت تصویر فشرده‌شده را بررسی و تأیید می‌کنم.</label>
+          <div class="aesh-form-split">
+            <div class="field"><label for="directoryJoinDate">تاریخ عضویت</label><input id="directoryJoinDate" maxlength="60" placeholder="مثلاً ۱۴۰۵/۰۸/۱۵"></div>
+            <div class="field"><label for="directoryRank">رتبه و سطح عضو</label><input id="directoryRank" maxlength="80" placeholder="مثلاً پیشرفته"></div>
+            <div class="field"><label for="directoryAvailability">وضعیت همکاری</label><input id="directoryAvailability" maxlength="100" placeholder="مثلاً آماده همکاری"></div>
+            <div class="field"><label for="directoryRubika">آدرس روبیکا (اختیاری)</label><input id="directoryRubika" maxlength="250" dir="ltr" placeholder="https://rubika.ir/..."></div>
+          </div>
+          <fieldset class="aesh-metrics"><legend>کارت‌های آمار عمومی</legend><p class="secondary small">عنوان و مقدار هر کارت قابل تنظیم است؛ ردیف خالی نمایش داده نمی‌شود.</p>
+            <div class="aesh-form-split"><div class="field"><label for="directoryStat1Label">عنوان کارت ۱</label><input id="directoryStat1Label" maxlength="55"><label for="directoryStat1Value">مقدار</label><input id="directoryStat1Value" maxlength="30"></div>
+            <div class="field"><label for="directoryStat2Label">عنوان کارت ۲</label><input id="directoryStat2Label" maxlength="55"><label for="directoryStat2Value">مقدار</label><input id="directoryStat2Value" maxlength="30"></div>
+            <div class="field"><label for="directoryStat3Label">عنوان کارت ۳</label><input id="directoryStat3Label" maxlength="55"><label for="directoryStat3Value">مقدار</label><input id="directoryStat3Value" maxlength="30"></div>
+            <div class="field"><label for="directoryStat4Label">عنوان کارت ۴</label><input id="directoryStat4Label" maxlength="55"><label for="directoryStat4Value">مقدار</label><input id="directoryStat4Value" maxlength="30"></div></div>
+          </fieldset>
+          <fieldset class="aesh-metrics"><legend>نمودار عملکرد</legend>
+            <label for="directoryChartTitle">عنوان نمودار</label><input id="directoryChartTitle" maxlength="90" placeholder="نمودار عملکرد">
+            <p class="secondary small">هر شاخص را با درصدی بین صفر تا صد وارد کنید.</p>
+            <div class="aesh-form-split"><div class="field"><label for="directoryMetric1Label">شاخص ۱</label><input id="directoryMetric1Label" maxlength="65"><label for="directoryMetric1Value">درصد شاخص ۱</label><input id="directoryMetric1Value" type="number" min="0" max="100" step="1"></div>
+            <div class="field"><label for="directoryMetric2Label">شاخص ۲</label><input id="directoryMetric2Label" maxlength="65"><label for="directoryMetric2Value">درصد شاخص ۲</label><input id="directoryMetric2Value" type="number" min="0" max="100" step="1"></div>
+            <div class="field"><label for="directoryMetric3Label">شاخص ۳</label><input id="directoryMetric3Label" maxlength="65"><label for="directoryMetric3Value">درصد شاخص ۳</label><input id="directoryMetric3Value" type="number" min="0" max="100" step="1"></div>
+            <div class="field"><label for="directoryMetric4Label">شاخص ۴</label><input id="directoryMetric4Label" maxlength="65"><label for="directoryMetric4Value">درصد شاخص ۴</label><input id="directoryMetric4Value" type="number" min="0" max="100" step="1"></div>
+            </div>
+          </fieldset>
+          <button id="directoryPreviewButton" class="outline" type="button">پیش‌نمایش اطلاعات پیش از ذخیره</button>
+          <section id="directoryPreview" class="aesh-form-preview" aria-label="پیش‌نمایش پروفایل" hidden><h3>پیش‌نمایش اطلاعات عمومی</h3><div id="directoryPreviewContent"></div></section>
           <label class="quality-confirm"><input id="directoryPublished" type="checkbox"> پروفایل در فهرست عمومی نمایش داده شود</label>
           <div class="aesh-admin-actions"><button id="directorySubmit" class="primary" type="submit">ذخیره اطلاعات عضو</button><button id="directoryReset" class="outline" type="button">پروفایل جدید</button></div>
         </form><div id="directoryNotice" class="notice" role="status" hidden></div><h3>پروفایل‌های اضافه‌شده</h3><div id="directoryList" class="aesh-admin-list"></div>
@@ -141,7 +164,7 @@
   <script src="../assets/aesh-config.js" defer></script>
   <script src="../assets/aesh-core.js?v=5.0" defer></script>
   <script src="../assets/aesh-image.js?v=5.0" defer></script>
-  <script src="members.js?v=5.0" defer></script>
+  <script src="members.js?v=5.0.urgent1" defer></script>
   <script src="works-panel.js?v=5.0" defer></script>
   <script src="admin-extra.js?v=5.0" defer></script>
 </body>

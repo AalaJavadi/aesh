@@ -1,0 +1,31 @@
+/* AESH blog: minimal extension to existing public visual identity. */
+.aesh-blog-page{padding:36px 0 78px;max-width:1050px}
+.aesh-blog-crumb{color:var(--muted,#6c7280);margin:8px 0 24px;font-size:.89rem}
+.aesh-blog-crumb a{color:inherit;text-decoration:none}
+.aesh-blog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,275px),1fr));gap:24px}
+.aesh-blog-card{display:flex;flex-direction:column;gap:9px;padding:16px 16px 22px;background:var(--surface,#fff);border:1px solid var(--border,#e5e5e5);border-radius:22px;text-decoration:none;color:inherit;box-shadow:0 8px 27px #151c2610;transition:transform .15s ease}
+.aesh-blog-card:hover,.aesh-blog-card:focus-visible{transform:translateY(-3px)}
+.aesh-blog-card img,.aesh-blog-card-placeholder{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px}
+.aesh-blog-card-placeholder{display:grid;place-items:center;background:linear-gradient(110deg,#fff2bf,#fff9e8);font-size:2.2rem;font-weight:900;letter-spacing:.1em;color:#6d511b}
+.aesh-blog-card h2{margin:0;font-size:1.2rem;line-height:1.65;color:inherit}
+.aesh-blog-card p{margin:0;line-height:1.85;color:var(--muted,#616971);font-size:.94rem;flex:1}
+.aesh-blog-card time{font-size:.85rem;color:var(--muted,#6c7280)}
+.aesh-blog-category{align-self:flex-start;display:inline-block;padding:3px 11px;background:#fff4d6;color:#896313;border-radius:20px;font-size:.85rem;font-weight:750}
+.aesh-blog-empty{background:#fff8e7;color:#674f16;border:1px solid #f3e2ac;border-radius:20px;padding:32px;text-align:center;line-height:2.2}
+.aesh-blog-article{padding:clamp(22px,4vw,48px);background:var(--surface,#fff);border-radius:24px;border:1px solid var(--border,#e4e4e4)}
+.aesh-blog-article h1{font-size:clamp(1.6rem,4vw,2.65rem);margin:18px 0 12px;line-height:1.6}
+.aesh-blog-summary{font-size:1.1rem;line-height:2;color:var(--muted,#616971)}
+.aesh-blog-byline{display:flex;gap:22px;flex-wrap:wrap;font-size:.92rem;color:var(--muted,#6c7280);margin:24px 0}
+.aesh-blog-cover{width:100%;max-height:600px;object-fit:contain;border-radius:18px;margin:20px 0}
+.aesh-blog-rich{line-height:2.05;overflow-wrap:anywhere}
+.aesh-blog-rich p{margin:14px 0}
+.aesh-blog-rich h2{font-size:1.45rem;margin:32px 0 12px}
+.aesh-blog-rich h3{font-size:1.19rem;margin:25px 0 12px}
+.aesh-blog-rich blockquote{background:#fff9eb;border-right:4px solid #f5b301;margin:20px 0;padding:14px 20px;border-radius:12px}
+.aesh-blog-rich img{max-width:100%;height:auto;border-radius:12px}
+.aesh-blog-rich figcaption{font-size:.85rem;color:var(--muted,#666)}
+.aesh-blog-rich a{text-decoration:underline}
+.aesh-blog-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:36px}
+.aesh-blog-tag{border:1px solid #dedede;border-radius:20px;padding:4px 12px;font-size:.82rem}
+.aesh-blog-back{display:inline-block;margin-top:24px;text-decoration:none;font-weight:700}
+@media(prefers-reduced-motion:reduce){.aesh-blog-card{transition:none}}

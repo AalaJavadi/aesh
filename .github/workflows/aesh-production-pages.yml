@@ -63,54 +63,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          #!/usr/bin/env python3
-          """Synchronize BOTH editor ZIP source snapshots from checked-out, reviewed files.
-          
-          This does not disable or relax the fail-closed check; check_editor_fallback_offline.py
-          must still pass after synchronization. No network or database access is used.
-          """
-          from pathlib import Path
-          import base64
-          import json
-          import re
-          
-          root = Path('.')
-          names = json.loads((root / 'assets/aesh-package-files.json').read_text(encoding='utf-8'))
-          needed = [
-              name for name in names
-              if name.startswith(('tools/', 'sql/', 'supabase/', '.github/'))
-              or ('/' not in name and name.endswith(('.md', '.txt')))
-          ]
-          if not needed:
-              raise SystemExit('FAIL: no packaged build sources in the editor manifest')
-          
-          payload = {}
-          for name in needed:
-              item = root / name
-              if not item.is_file():
-                  raise SystemExit('FAIL: source listed in editor manifest is missing: ' + name)
-              payload[name] = base64.b64encode(item.read_bytes()).decode('ascii')
-          
-          for filename, regex in (
-              ('assets/aesh-editor-immutable.js', r'window\.AESH_IMMUTABLE_FILES=(\{.*?\});'),
-              ('editor/index.html', r'var AESH_EDITOR_EMBEDDED_FILES=(\{.*?\});'),
-          ):
-              item = root / filename
-              original = item.read_text(encoding='utf-8')
-              match = re.search(regex, original, re.S)
-              if not match:
-                  raise SystemExit('FAIL: editor mapping not found: ' + filename)
-              mapped = json.loads(match.group(1))
-              changed = [name for name, encoded in payload.items() if mapped.get(name) != encoded]
-              for name, encoded in payload.items():
-                  mapped[name] = encoded
-              if changed:
-                  encoded_map = json.dumps(mapped, ensure_ascii=False, separators=(',', ':'))
-                  updated = original[:match.start(1)] + encoded_map + original[match.end(1):]
-                  item.write_text(updated, encoding='utf-8')
-              print(f'PASS: {filename}: {len(changed)} refreshed / {len(needed)} source entries', flush=True)
-          PY
+          # Include backups, Cloudflare, snapshots and approved build scripts.
+          # Keep the strict offline export check immediately below this step.
+          python tools/sync_editor_embedded_sources.py
 
       - name: Test editor ZIP fallback (offline)
         run: python tools/check_editor_fallback_offline.py
@@ -118,9 +73,21 @@ jobs:
         run: python tools/test_generated_pages_offline.py
       - name: Test stage, revoked Cloud works and sitemap (offline)
         run: python tools/test_staged_and_archive_offline.py
+      - name: Test reviewed Cloudflare HTML cutover guard (offline only)
+        run: python tools/test_cloud_cutover_offline.py
+      - name: Set up Node.js 22 to test signed Access and D1 protections
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Cloudflare API security against disposable SQLite and R2
+        run: node --no-warnings tools/test_cloudflare_cms.mjs
+      # DEFAULT: keep the proven Supabase RPC guard. The Cloudflare-only branch
+      # is explicitly opt-in and checks restored backup signoff + FULL legacy IDs.
       - name: Fetch and render ONLY currently published Supabase works
+        if: ${{ vars.AESH_PUBLIC_SOURCE != 'cloudflare-verified' }}
         run: python tools/sync_cloud_share.py
       - name: Verify optional directory without modifying old members
+        if: ${{ vars.AESH_PUBLIC_SOURCE != 'cloudflare-verified' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -166,6 +133,37 @@ jobs:
               directory.run(rows, host)
           PY
 
+      # New Cloudflare CMS remains OPTIONAL. No token = no migration or edits.
+      # The GitHub Actions secret is used only inside this build runner, never in Pages.
+      - name: Build independent blog and approved Cloudflare CMS HTML
+        if: ${{ vars.AESH_PUBLIC_SOURCE != 'cloudflare-verified' }}
+        shell: bash
+        env:
+          AESH_CMS_SNAPSHOT_URL: ${{ vars.AESH_CMS_SNAPSHOT_URL }}
+          AESH_CMS_PUBLISH_TOKEN: ${{ secrets.AESH_CMS_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${AESH_CMS_SNAPSHOT_URL:-}" ]; then
+            python tools/sync_cms_public.py
+            test -f .aesh-cms-snapshot.json
+            python tools/build_blog.py --cms-snapshot-file .aesh-cms-snapshot.json
+          else
+            python tools/build_blog.py
+          fi
+      - name: Optional CLOUD-ONLY verified cutover (refuses incomplete legacy migration)
+        if: ${{ vars.AESH_PUBLIC_SOURCE == 'cloudflare-verified' }}
+        shell: bash
+        env:
+          AESH_CMS_SNAPSHOT_URL: ${{ vars.AESH_CMS_SNAPSHOT_URL }}
+          AESH_CMS_PUBLISH_TOKEN: ${{ secrets.AESH_CMS_PUBLISH_TOKEN }}
+          AESH_CLOUD_CUTOVER_APPROVAL: ${{ secrets.AESH_CLOUD_CUTOVER_APPROVAL }}
+        run: |
+          set -euo pipefail
+          # Requires owner signoff, full source inventory parity and D1 UUID links.
+          # Failure means NO new GitHub Pages deployment, old release preserved.
+          python tools/sync_cms_cutover.py
+          test -f .aesh-cms-snapshot.json
+          python tools/build_blog.py --cms-snapshot-file .aesh-cms-snapshot.json
       - name: Stage public site, withholding unverified old cloud shells
         run: python tools/stage_site.py
       - name: Verify every sitemap route and public stage

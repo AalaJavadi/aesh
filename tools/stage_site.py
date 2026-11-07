@@ -15,7 +15,7 @@ TARGET.mkdir()
 SECTIONS = (
     'assets', 'members', 'studio', 'about', 'courses', 'events', 'faq', 'news',
     'portfolio', 'rules', 'students', 'teachers', 'teacher', 'student', 'work',
-    'course', 'featured', 'editor', 'directory-profile',
+    'course', 'featured', 'editor', 'directory-profile', 'blog',
 )
 TOP = ('index.html', '404.html', 'CNAME', '.nojekyll', 'sitemap.xml',
        'robots.txt', 'favicon.png', 'favicon.ico', 'sw.js')

@@ -1,4 +1,2 @@
 User-agent: *
-Allow: /
-
-Sitemap: https://aesh.ir/sitemap.xml
+Disallow: /

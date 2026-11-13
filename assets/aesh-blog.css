@@ -29,3 +29,37 @@
 .aesh-blog-tag{border:1px solid #dedede;border-radius:20px;padding:4px 12px;font-size:.82rem}
 .aesh-blog-back{display:inline-block;margin-top:24px;text-decoration:none;font-weight:700}
 @media(prefers-reduced-motion:reduce){.aesh-blog-card{transition:none}}
+
+/* AESH TEST: dependable independent blog shell on narrow phones. */
+*,*::before,*::after{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:clip}
+body{margin:0;background:#fbfaf6;color:#182236;font-family:Tahoma,Arial,system-ui,sans-serif;line-height:1.8}
+.wrap{width:min(1120px,calc(100% - 32px));margin-inline:auto;min-width:0}
+.site-header{position:relative;z-index:20;background:#fff;border-bottom:1px solid #ede9de;box-shadow:0 4px 16px #1118270b}
+.site-header .header-in{display:flex;align-items:center;justify-content:space-between;gap:15px;min-height:84px}
+.site-header .brand{display:flex;align-items:center;min-width:0;gap:10px;color:#152038;text-decoration:none}
+.site-header .brand-logo{width:48px;height:48px;object-fit:contain;flex:none}
+.site-header .brand-copy{display:grid;min-width:0;line-height:1.4}
+.site-header .brand-copy strong{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site-header .brand-copy em{font-style:normal;color:#d59b08}
+.site-header .brand-copy small{font-size:11px;color:#627080}
+.site-header .primary-nav{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.site-header .primary-nav a{font-size:12px;text-decoration:none;color:#34435c;white-space:nowrap}
+.site-header .header-actions{display:flex;gap:8px;align-items:center;flex:none}
+.site-header .login-link{display:inline-block;white-space:nowrap;background:#f5b301;border-radius:99px;padding:7px 12px;color:#182236;font-weight:bold;text-decoration:none;font-size:12px}
+.site-header .menu-toggle{display:none;background:#fff5d4;border:1px solid #f3df9e;border-radius:10px;padding:6px 12px;color:#17243a;font-size:20px;cursor:pointer}
+.page-hero{background:linear-gradient(135deg,#fff8e7,#fffdf7);padding:48px 0 40px}
+.page-hero h1{font-size:clamp(25px,5vw,40px);line-height:1.5;margin:8px 0}
+.page-hero .eyebrow{color:#a27300;font-weight:800}
+.page-hero p{color:#5c6677;margin:0}
+.footer{background:#152033;color:#fff;padding:28px 0 15px}
+.footer-top{display:flex;justify-content:space-between;gap:25px;flex-wrap:wrap}
+.footer-top h2{font-size:19px}
+.footer-top p{color:#bec9d6;font-size:13px;max-width:430px}
+.footer-top nav{display:flex;gap:10px;flex-wrap:wrap;max-width:520px}
+.footer-top nav a{color:#e9edf4;font-size:12px}
+.footer-bottom{margin-top:23px;border-top:1px solid #ffffff22;padding-top:12px;font-size:12px;color:#d5dae1;overflow-wrap:anywhere}
+.footer-bottom a{color:#ffe8a6}
+.aesh-blog-page{width:min(1050px,calc(100% - 32px));max-width:none}
+@media(max-width:900px){.site-header .primary-nav{display:none;position:absolute;top:100%;right:16px;left:16px;padding:15px;flex-direction:column;align-items:stretch;background:#fff;border:1px solid #eee;border-radius:0 0 20px 20px;box-shadow:0 15px 30px #1520331f;z-index:50}.site-header .primary-nav.open{display:flex}.site-header .primary-nav a{padding:5px 10px}.site-header .menu-toggle{display:inline-flex}}
+@media(max-width:470px){.site-header .header-in{min-height:70px;gap:8px}.site-header .brand-logo{width:36px;height:36px}.site-header .brand-copy strong{font-size:12px}.site-header .brand-copy small{display:none}.site-header .login-link{font-size:11px;padding:6px 9px}.page-hero{padding:28px 0}.aesh-blog-empty{padding:20px 14px}.footer-top{display:block}.footer-top nav{margin-top:14px}}

@@ -1,0 +1,2 @@
+Font Awesome Free icons v6.7.2 (c) Fonticons, Inc. | CC BY 4.0 | https://fontawesome.com/license/free | https://creativecommons.org/licenses/by/4.0/
+The SVG paths are embedded as data URIs in aesh-local-icons.css. No font files are included.

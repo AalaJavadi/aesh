@@ -73,8 +73,10 @@ def verify(source: Path, stage: Path, verbose: bool = True) -> bool:
     sitemap = source / 'sitemap.xml'
     if sitemap.is_file():
         try:
-            for node in ET.parse(sitemap).iter():
-                if node.tag.endswith('loc') and node.text:
+            # Only <url><loc> is an HTML page route. The optional
+            # <image:image><image:loc> is an image file, never /index.html.
+            for node in ET.parse(sitemap).findall('./{*}url/{*}loc'):
+                if node.text:
                     url_path = unquote(urlsplit(node.text).path).lstrip('/')
                     relative = (Path(url_path) if url_path.endswith('.html')
                                 else (Path(url_path) / 'index.html' if url_path else Path('index.html')))

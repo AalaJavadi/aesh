@@ -16,7 +16,7 @@ function sitePath(s){return base+String(s||'').replace(/^\//,'');}
 window.__AESH_BASE_PATH__=base==='/'?'':base.slice(0,-1);
 window.isEditMode=false;
 function fa(t){return String(t).replace(/[0-9]/g,x=>'۰۱۲۳۴۵۶۷۸۹'[Number(x)]);}
-function navigate(url){if(!storeDraftBeforeNavigation(url))location.assign(url);}
+function navigate(url){location.assign(url);}
 // Return true so normal links navigate between genuinely independent pages.
 window.handleSiteLink=function(){return true;};
 window.go=function(name){navigate(sitePath(name==='home'?'':name+'/'));};
@@ -25,75 +25,7 @@ window.closeMobileNav=function(){const n=$('mobileNavOverlay'),b=$('mobileMenuBt
 window.toggleMobileNav=function(){const n=$('mobileNavOverlay');if(n&&n.classList.contains('show'))closeMobileNav();else openMobileNav();};
 window.toggleTheme=function(){const now=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=now;try{localStorage.setItem('ed_theme',now)}catch(e){};const icon=$('themeBtn')?.querySelector('i');if(icon)icon.className=now==='dark'?'fas fa-sun':'fas fa-moon';};
 try{document.documentElement.dataset.theme=localStorage.getItem('ed_theme')==='dark'?'dark':'light';}catch(e){}
-/* Lazy, same-page editor: the existing full editor remains in its own same-origin
-   iframe. The public URL never changes and public CSS/DOM are never replaced. */
-let inlineShell=null,inlineFrame=null,inlineMode='modal',pendingEditorNavigation=null;
-function storeDraftBeforeNavigation(url){
- if(!inlineShell||inlineShell.hidden||!inlineFrame||pendingEditorNavigation)return false;
- pendingEditorNavigation=String(url);
- inlineFrame.contentWindow?.postMessage({channel:EDITOR_CHANNEL,type:'persist-before-navigation'},location.origin);
- return true;
-}
-document.addEventListener('click',function(e){
- if(!inlineShell||inlineShell.hidden||e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
- const a=e.target.closest?.('a[href]');if(!a||a.target==='_blank'||a.hasAttribute('download'))return;
- let url;try{url=new URL(a.href,location.href);}catch(err){return;}
- if(url.origin!==location.origin||url.pathname===location.pathname&&url.search===location.search&&url.hash)return;
- if(storeDraftBeforeNavigation(url.href))e.preventDefault();
-},true);
-const EDITOR_CHANNEL='aesh-inline-editor-v1';
-function inlineEditorMessage(e){
- if(!inlineFrame||e.source!==inlineFrame.contentWindow||e.origin!==location.origin)return;
- const msg=e.data;if(!msg||msg.channel!==EDITOR_CHANNEL)return;
-  if(msg.type==='ready'){
-    inlineShell.hidden=false;
-    inlineFrame.contentWindow?.postMessage({channel:EDITOR_CHANNEL,type:'open'},location.origin);
-    return;
-  }
- if(msg.type==='draft-saved'){
-   const url=pendingEditorNavigation;pendingEditorNavigation=null;
-   if(msg.ok&&url)location.assign(url);
-   else alert('ذخیره پیش نویس انجام نشد. صفحه تغییر نکرد تا ویرایش های شما از دست نرود.');
-   return;
- }
- if(msg.type==='dismiss'||msg.type==='idle'){
-   // Idle is sent before the login dialog opens; only dismiss explicitly closes.
-   if(msg.type==='dismiss')inlineShell.hidden=true;
-   return;
- }
- if(['panel','modal','workspace'].includes(msg.type)){
-   inlineMode=msg.type;
-   inlineShell.dataset.mode=inlineMode;
-   inlineShell.hidden=false;
- }
-}
-window.addEventListener('message',inlineEditorMessage);
-function openInlineEditor(){
- if(inlineShell){
-   if(!inlineShell.hidden){inlineShell.hidden=true;return;}
-   inlineShell.hidden=false;
-   inlineFrame.contentWindow?.postMessage({channel:EDITOR_CHANNEL,type:'open'},location.origin);
-   return;
- }
- const css=document.createElement('link');css.id='aesh-inline-host-style';css.rel='stylesheet';css.href=sitePath('assets/aesh-inline-host.css');document.head.appendChild(css);
- inlineShell=document.createElement('div');inlineShell.id='aesh-inline-host';
- inlineShell.dataset.mode=inlineMode;inlineShell.setAttribute('role','region');
- inlineShell.setAttribute('aria-label','ویرایشگر انجمن در همین صفحه');
- inlineFrame=document.createElement('iframe');inlineFrame.title='ویرایشگر انجمن ادیتوران شایسته';
- inlineFrame.setAttribute('allow','clipboard-read; clipboard-write');
- inlineShell.appendChild(inlineFrame);document.body.appendChild(inlineShell);
- let path=document.body.dataset.aeshPath||location.pathname;
- const baseRoot=window.__AESH_BASE_PATH__||'';
- if(baseRoot&&path.startsWith(baseRoot+'/'))path=path.slice(baseRoot.length);
- // A frame load is a fallback; the bridge's ready handshake is authoritative.
- inlineFrame.addEventListener('load',()=>{
-   inlineFrame.contentWindow?.postMessage({channel:EDITOR_CHANNEL,type:'open'},location.origin);
- });
- inlineFrame.src=sitePath('editor/')+'?view='+encodeURIComponent(path||'/')+'&inline=1';
-}
-window.toggleEdit=openInlineEditor;
 document.addEventListener('keydown',e=>{
- if(e.ctrlKey&&e.shiftKey&&!e.altKey&&e.key.toLowerCase()==='e'){e.preventDefault();toggleEdit();}
  if(e.key==='Escape'){closeMobileNav();closeGlobalSearch();}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openGlobalSearch();}
 });
@@ -120,21 +52,32 @@ function hydratePortfolio(){
  function fill(el){
    const url=el.getAttribute('data-src');if(!url||el.querySelector('img'))return;
    const img=document.createElement('img');img.alt=el.getAttribute('data-alt')||'نمونه‌کار';img.decoding='async';
-   if(el.getBoundingClientRect().top<innerHeight*.95){img.loading='eager';img.fetchPriority='high';}
-   else img.loading='lazy';
-   let timer=null,failed=false;
-   function clear(){if(timer!==null){clearTimeout(timer);timer=null;}}
+   const visible=el.getBoundingClientRect().top<innerHeight*.95;
+   img.loading=visible?'eager':'lazy';
+   if(visible)img.fetchPriority='high';
+   let timer=null,failed=false,notice=null;
+   function clear(){if(timer!==null){clearTimeout(timer);timer=null;}if(notice){notice.remove();notice=null;}}
+   function retry(){
+     clear();failed=false;img.hidden=false;img.removeAttribute('src');img.remove();
+     el.classList.add('portfolio-loading');el.classList.remove('aesh-image-slow');fill(el);
+   }
+   function showNotice(message){
+     if(notice)return;
+     notice=document.createElement('div');notice.className='aesh-image-unavailable aesh-image-loading-note';
+     const text=document.createElement('span');text.textContent=message;
+     const button=document.createElement('button');button.type='button';button.textContent='تلاش دوباره';
+     button.addEventListener('click',event=>{event.stopPropagation();retry();});
+     notice.append(text,button);el.append(notice);
+   }
    function fallback(){
      if(failed)return;failed=true;clear();el.classList.remove('portfolio-loading');
      img.hidden=true;img.removeAttribute('src');
-     const holder=document.createElement('div');holder.className='aesh-image-unavailable';
-     const text=document.createElement('span');text.textContent='تصویر فعلاً در دسترس نیست';
-     const retry=document.createElement('button');retry.type='button';retry.textContent='تلاش دوباره';
-     retry.addEventListener('click',event=>{event.stopPropagation();holder.remove();img.remove();el.classList.add('portfolio-loading');fill(el);});
-     holder.append(text,retry);el.append(holder);
+     showNotice('تصویر فعلاً در دسترس نیست');
    }
    img.addEventListener('load',()=>{clear();if(failed)return;
-     el.style.setProperty('--portfolio-bg','url('+JSON.stringify(img.currentSrc||img.src)+')');el.classList.remove('portfolio-loading');
+     el.classList.remove('aesh-image-slow');
+     el.style.setProperty('--portfolio-bg','url('+JSON.stringify(img.currentSrc||img.src)+')');
+     el.classList.remove('portfolio-loading');
    });
    img.addEventListener('error',()=>{
      if(failed)return;
@@ -143,7 +86,11 @@ function hydratePortfolio(){
      fallback();
    });
    el.append(img);img.src=url;
-   timer=setTimeout(fallback,9000); // a blocked media host must not leave an endless spinner
+   // IMPORTANT: slow is not broken. Never abort an image that is still loading.
+   timer=setTimeout(()=>{
+     if(!failed&&!img.complete){el.classList.add('aesh-image-slow');
+       showNotice('دریافت تصویر طولانی شده است؛ دانلود همچنان ادامه دارد');}
+   },11000);
  }
  if(!('IntersectionObserver' in window)){nodes.forEach(fill);return;}
  if(!thumbObserver)thumbObserver=new IntersectionObserver(es=>es.forEach(ent=>{

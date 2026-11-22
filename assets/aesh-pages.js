@@ -14,16 +14,6 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape') {menu.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false');} });
     document.addEventListener('click', e => { if (!menu.contains(e.target) && !toggle.contains(e.target)) {menu.classList.remove('open');toggle.setAttribute('aria-expanded','false');} });
   }
-  // Classic editor is kept independent so the public pages never download editor data.
-  document.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'e' && !e.repeat) {
-      e.preventDefault();
-      if (typeof window.toggleEdit === 'function') { window.toggleEdit(); return; }
-      const target = new URL('/editor/', window.location.origin);
-      target.searchParams.set('view', window.location.pathname || '/');
-      window.location.assign(target.href);
-    }
-  });
   const search = $('#listSearch'), filters = $$('.filter-btn'), list = $('#listingGrid');
   if (list) {
     const apply = () => {

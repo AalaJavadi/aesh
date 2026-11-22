@@ -442,6 +442,10 @@ def base_html(original,body,route,kind,metadata,d,legacy_doc=None,identity=None)
     # This is applied every time a page (including a new Cloud page) is built.
     for preview_return in bodytag.find_all(id='editorPreviewReturn'):
         preview_return.decompose()
+    # Public site text/page editing is discontinued. Member and work editing
+    # remain in the separate, Supabase-authorized /members/ panel.
+    for edit_entry in bodytag.find_all(id='editBtn'):
+        edit_entry.decompose()
     # Remove old progressive loader that only belongs to monolithic SPA.
     for ident in ('loader',):
         el=bodytag.find(id=ident)
@@ -489,7 +493,7 @@ def base_html(original,body,route,kind,metadata,d,legacy_doc=None,identity=None)
     rootbase=head.find(id='siteBase')
     if rootbase:rootbase['href']='/'
     for scriptname in ('aesh-static.js',):
-        x=doc.new_tag('script',src='/assets/'+scriptname+'?v=5.0.3',defer=True);bodytag.append(x)
+        x=doc.new_tag('script',src='/assets/'+scriptname+'?v=5.0.4',defer=True);bodytag.append(x)
     # Public API is loaded only where that page needs dynamic Supabase data.
     if kind in ('page','teacher','student','work','404') and (route in ('/','/teachers/','/students/','/portfolio/','/about/') or kind in ('teacher','student','work')):
         for scriptname in ('aesh-config.js','aesh-core.js'):
@@ -500,9 +504,9 @@ def base_html(original,body,route,kind,metadata,d,legacy_doc=None,identity=None)
         bodytag.append(doc.new_tag('script',src='/assets/aesh-directory.js?v=5.0',defer=True))
     if route=='/':
         bodytag.append(doc.new_tag('script',src='/assets/aesh-home-stats.js?v=5.0',defer=True))
-        bodytag.append(doc.new_tag('script',src='/assets/aesh-home-showcase.js?v=1',defer=True))
+        bodytag.append(doc.new_tag('script',src='/assets/aesh-home-showcase.js?v=2',defer=True))
     if route=='/portfolio/':
-        bodytag.append(doc.new_tag('script',src='/assets/aesh-cloud-gallery.js?v=5.0',defer=True))
+        bodytag.append(doc.new_tag('script',src='/assets/aesh-cloud-gallery.js?v=5.0.media2',defer=True))
     if kind=='teacher':
         bodytag.append(doc.new_tag('script',src='/assets/aesh-teacher-works.js?v=5.0',defer=True))
     if kind=='work':
@@ -543,7 +547,7 @@ def main():
     selections=read_selections()
     old=all_legacy_files()
     old_sitemap=ET.parse(ROOT/'sitemap.xml')
-    old_urls=[el.text for el in old_sitemap.findall('.//{*}loc') if el.text]
+    old_urls=[el.text for el in old_sitemap.findall('./{*}url/{*}loc') if el.text]
     manifest=set(old_urls)
     route_sources={}
     page_names={'home':'خانه','teachers':'اساتید انجمن','students':'هنرجویان انجمن','portfolio':'نمونه‌کارهای انجمن','courses':'دوره‌های آموزشی','events':'مسابقات و رویدادها','news':'اخبار انجمن','faq':'پرسش‌های متداول','rules':'قوانین انجمن','about':'درباره انجمن'}
@@ -588,7 +592,7 @@ def main():
             write(ROOT/rel,out)
         route_sources[path]='legacy'
     # Keep EVERY old sitemap URL byte-for-byte and add new URLs; no slug is discarded.
-    current={el.text for el in old_sitemap.findall('.//{*}loc') if el.text}
+    current={el.text for el in old_sitemap.findall('./{*}url/{*}loc') if el.text}
     for url in sorted(manifest-current):
         entry=ET.SubElement(old_sitemap.getroot(),f'{{{NS}}}url')
         ET.SubElement(entry,f'{{{NS}}}loc').text=url

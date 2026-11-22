@@ -30,7 +30,7 @@
    $('aeshSidebarTitle').textContent=isOwner?'مدیریت انجمن':'پنل عضو انجمن';
    $('aeshOverviewTitle').textContent=isOwner?'به مدیریت انجمن خوش آمدید':'به پنل اعضا خوش آمدید';
    $('aeshOverviewDescription').textContent=isOwner?
-     'برای ثبت یا تأیید آثار، افزودن و ویرایش پروفایل اعضا، نظرات و ویرایش صفحات، از منوی کنار یک بخش را انتخاب کنید.':
+     'برای ثبت یا تأیید آثار، افزودن و ویرایش پروفایل اعضا و مدیریت نظرات، از منوی کنار یک بخش را انتخاب کنید.':
      'برای ویرایش معرفی خود یا ارسال نمونه‌کار از منوی کنار انتخاب کنید.';
    sidebar.hidden=false;
    // Existing authorized dashboard handlers may update owner-only visibility

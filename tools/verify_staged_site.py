@@ -16,8 +16,8 @@ from sync_cloud_share import is_obsolete_cloud_shell
 
 REQUIRED_HTML = (
     'index.html', '404.html',
-    'editor/index.html', 'directory-profile/index.html',
-    'members/index.html', 'studio/index.html',
+    'directory-profile/index.html',
+    'members/index.html',
     'teachers/index.html', 'students/index.html',
     'portfolio/index.html', 'blog/index.html', 'about/index.html',
     'courses/index.html', 'events/index.html',
@@ -25,13 +25,16 @@ REQUIRED_HTML = (
 )
 REQUIRED_ASSETS = (
     'assets/aesh-config.js', 'assets/aesh-core.js',
-    'assets/aesh-directory-profile.js', 'assets/aesh-editor-bridge.js',
-    'assets/aesh-editor-export.js', 'assets/aesh-editor-immutable.js',
+    'assets/aesh-directory-profile.js',
     'assets/aesh-static.js', 'assets/aesh-image.js',
     'assets/aesh-site.css', 'assets/aesh-cloud-gallery.js',
     'assets/aesh-blog.css', 'assets/aesh-cms-pages.css',
 )
 ROUTED_DIRS = ('teacher', 'student', 'work', 'course', 'featured')
+INTERNAL_ONLY = ('editor/index.html', 'studio/index.html',
+                 'assets/aesh-editor-bridge.js','assets/aesh-editor-export.js',
+                 'assets/aesh-editor-immutable.js','assets/aesh-editor-curation.js',
+                 'assets/aesh-inline-host.css')
 REQUIRED_TOP = ('sitemap.xml', 'robots.txt', 'sw.js', '.nojekyll', 'favicon.png')
 EXCLUDED = ('sql', 'supabase', 'tools', '.github')
 # Public HTML must never include the editor-only preview-return control.
@@ -50,6 +53,13 @@ def verify(source: Path, stage: Path, verbose: bool = True) -> bool:
             missing.append('source missing required file: ' + path)
         if not (stage / path).is_file():
             missing.append('artifact missing required file: ' + path)
+    for path in INTERNAL_ONLY:
+        if not (source / path).is_file():
+            missing.append('internal source file missing: ' + path)
+        if (stage / path).exists():
+            missing.append('retired text editor leaked into public artifact: ' + path)
+    if (stage / 'editor').exists() or (stage / 'studio').exists():
+        missing.append('retired text editor directory leaked into public artifact')
     if (source / 'CNAME').exists() != (stage / 'CNAME').exists():
         missing.append('CNAME presence differs between source and artifact')
     if (source / '.aesh-test').is_file() and (stage / 'CNAME').exists():
@@ -114,8 +124,8 @@ def verify(source: Path, stage: Path, verbose: bool = True) -> bool:
     for name in EXCLUDED:
         if (stage / name).exists():
             missing.append('artifact contains a non-public source directory: ' + name)
-    # Source editor and members can contain multiple files; preserve all of them.
-    for name in ('editor', 'directory-profile', 'members', 'studio'):
+    # Preserve public auxiliary files only. Authoring sources are internal.
+    for name in ('directory-profile', 'members'):
         for file in (source / name).rglob('*'):
             if file.is_file() and not (stage / file.relative_to(source)).is_file():
                 missing.append('artifact missing auxiliary page file: ' + file.relative_to(source).as_posix())
@@ -128,6 +138,15 @@ def verify(source: Path, stage: Path, verbose: bool = True) -> bool:
                 continue
             if PUBLIC_PREVIEW_RETURN.search(page.read_text('utf-8')):
                 missing.append(f'{label} public HTML contains editor-only preview control: {relative.as_posix()}')
+    # A future source regeneration must not silently resurrect text editing
+    # in the public site. The original internal authoring source may remain.
+    editor_entry_re = re.compile(r'<(?:button|a)\b[^>]*(?:\bid=["\']editBtn["\']|\bhref=["\'](?:/|\./)?editor/)', re.I | re.S)
+    for page in stage.rglob('*.html'):
+        if editor_entry_re.search(page.read_text('utf-8')):
+            missing.append('retired editor entry leaked into public HTML: ' + page.relative_to(stage).as_posix())
+    public_script = stage / 'assets/aesh-static.js'
+    if public_script.is_file() and ('openInlineEditor' in public_script.read_text('utf-8')):
+        missing.append('retired inline editor script leaked into public artifact')
     if missing:
         for problem in missing:
             print('FAIL | ' + problem, file=sys.stderr)
@@ -136,7 +155,7 @@ def verify(source: Path, stage: Path, verbose: bool = True) -> bool:
     if verbose:
         html_count = sum(1 for _ in stage.rglob('*.html'))
         print('PASS | Mandatory GitHub Pages artifact paths checked; HTML:', html_count)
-        print('PASS | Editor, directory fallback, member panel, assets and generated routes staged')
+        print('PASS | Text editor excluded; member panel and generated routes staged')
     return True
 
 

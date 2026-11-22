@@ -38,7 +38,7 @@ def digest(path):
 def sitemap_routes(root):
     from urllib.parse import unquote, urlsplit
     return {unquote(urlsplit(node.text).path).rstrip('/')
-            for node in ET.parse(root / 'sitemap.xml').iter()
+            for node in ET.parse(root / 'sitemap.xml').findall('./{*}url/{*}loc')
             if node.tag.endswith('loc') and node.text}
 
 
@@ -157,18 +157,50 @@ def main():
                                             '/' + new_page.removesuffix('/index.html')}
         assert sitemap_routes(site) == expected_published, 'New published URL or a stable URL missing from sitemap'
         print(call(site, 'tools/stage_site.py'))
+        # Regression: an image sitemap URL is not an HTML route. This
+        # reproduces the live error where 24 approved JPEGs caused 48
+        # false missing-index.html failures.
+        public_image = 'assets/approved-works/' + NEW_ID + '-full.jpg'
+        image_file = site / public_image
+        image_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(site / 'assets/social/portfolio.jpg', image_file)
+        image_tree = ET.parse(site / 'sitemap.xml')
+        page_url = 'https://aesh.ir/work/' + slug + '/'
+        url_tag = '{' + cloud.NS + '}url'
+        loc_tag = '{' + cloud.NS + '}loc'
+        work_node = next(n for n in image_tree.getroot().findall(url_tag)
+                         if n.findtext(loc_tag) == page_url)
+        image_node = ET.SubElement(work_node, '{' + cloud.IMAGE_NS + '}image')
+        ET.SubElement(image_node, '{' + cloud.IMAGE_NS + '}loc').text = 'https://aesh.ir/' + public_image
+        image_tree.write(site / 'sitemap.xml', encoding='utf-8', xml_declaration=True)
+        assert sitemap_routes(site) == expected_published
+        print(call(site, 'tools/stage_site.py'))
+        assert (site / '_site' / public_image).is_file()
+        print('PASS | image:loc is verified as image metadata, not a missing HTML route')
+        # The same safety check MUST still reject a genuinely missing page.
+        missing_page = ET.SubElement(image_tree.getroot(), url_tag)
+        ET.SubElement(missing_page, loc_tag).text = 'https://aesh.ir/definitely-nonexistent-fixture/'
+        image_tree.write(site / 'sitemap.xml', encoding='utf-8', xml_declaration=True)
+        error = call(site, 'tools/stage_site.py', want_success=False)
+        assert 'sitemap points at missing source route: definitely-nonexistent-fixture/index.html' in error
+        image_tree.getroot().remove(missing_page)
+        image_tree.write(site / 'sitemap.xml', encoding='utf-8', xml_declaration=True)
+        print(call(site, 'tools/stage_site.py'))
+        print('PASS | missing sitemap HTML route still fails closed')
         for stale in obsolete:
             assert not (site / '_site' / stale).exists(), 'Unverified old Supabase shell shipped to Pages'
             assert (site / stale).is_file(), 'Unverified old Supabase shell deleted from source'
         print(f'PASS | {len(obsolete)} obsolete Cloud shells withheld from Pages, preserved in source')
-        for needed in ('editor/index.html', 'directory-profile/index.html',
-                       'members/index.html', 'studio/index.html', new_page):
+        for needed in ('directory-profile/index.html',
+                       'members/index.html', new_page):
             assert (site / '_site' / needed).is_file(), 'Missing staged route ' + needed
-        print('PASS | staged editor, fallback profile, members and freshly generated work')
+        assert not (site / '_site' / 'editor').exists()
+        assert not (site / '_site' / 'studio').exists()
+        print('PASS | text editor not deployed; fallback profile, members and generated work intact')
 
         # Deleting a required staged output MUST make validation fail, not warn.
-        for relative in ('editor/index.html', 'directory-profile/index.html',
-                         'members/index.html', 'assets/aesh-editor-export.js', new_page):
+        for relative in ('directory-profile/index.html',
+                         'members/index.html', 'assets/aesh-core.js', new_page):
             verify_missing(site, site / '_site' / relative)
         print('PASS | required-stage gate rejects missing routes/assets with nonzero exit')
         source_editor = site / 'editor/index.html'

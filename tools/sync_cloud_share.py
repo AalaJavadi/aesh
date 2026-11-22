@@ -110,22 +110,38 @@ def cache_approved_media(root: Path, docs: dict, host: str) -> None:
             tasks.append((info['id'],typ,ext,url,dest))
     def fetch_media(task):
         identifier,typ,ext,url,dest=task
-        try:
-            req=Request(url,headers={'Accept':'image/webp,image/jpeg,image/png'})
-            with urlopen(req,timeout=5) as response:
-                data=response.read(450_001)
-            if not 0<len(data)<=450_000 or not _image_magic(data,ext):
-                raise ValueError('Not a bounded valid image')
-            # Atomic replacement: never persist a truncated download.
-            tmp=dest.with_suffix(dest.suffix+'.tmp')
-            tmp.write_bytes(data)
-            tmp.replace(dest)
-            return identifier,typ,'/assets/approved-works/'+dest.name
-        except (OSError, ValueError, URLError, HTTPError) as err:
-            print('WARN | approved image not cached:',identifier[:8],typ,str(err)[:90])
-            return identifier,typ,None
+        # A brief outage at the public Edge gateway should not discard an
+        # already cached image of this SAME still-approved UUID and media type.
+        def previous_approved_copy():
+            try:
+                if dest.is_file():
+                    data=dest.read_bytes()
+                    if 0<len(data)<=450_000 and _image_magic(data,ext):
+                        return identifier,typ,'/assets/approved-works/'+dest.name
+            except OSError:
+                pass
+            return None
+        for attempt in range(2):
+            try:
+                req=Request(url,headers={'Accept':'image/webp,image/jpeg,image/png'})
+                with urlopen(req,timeout=9) as response:
+                    data=response.read(450_001)
+                if not 0<len(data)<=450_000 or not _image_magic(data,ext):
+                    raise ValueError('Not a bounded valid image')
+                # Atomic replacement: never persist a truncated download.
+                tmp=dest.with_suffix(dest.suffix+'.tmp')
+                tmp.write_bytes(data)
+                tmp.replace(dest)
+                return identifier,typ,'/assets/approved-works/'+dest.name
+            except (OSError, ValueError, URLError, HTTPError) as err:
+                # Retry transport/5xx faults once, but do not retry private/404.
+                if isinstance(err,HTTPError) and err.code not in (429,500,502,503,504):
+                    break
+                if attempt==1:
+                    print('WARN | approved image not cached:',identifier[:8],typ,str(err)[:90])
+        return previous_approved_copy() or (identifier,typ,None)
     success=0
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         for identifier,typ,relative in executor.map(fetch_media,tasks):
             if relative:
                 success+=1
@@ -141,6 +157,41 @@ def cache_approved_media(root: Path, docs: dict, host: str) -> None:
         if old.is_file() and re.fullmatch(rf'{UUID}-(?:thumb|full)\.(?:jpg|png|webp)',old.name,re.I) and old.name not in expected:
             old.unlink()
     print('AESH approved public media cached:',success,'/',len(tasks),'(no private buckets copied)')
+
+
+def localize_verified_portfolio_cards(root: Path, docs: dict) -> int:
+    """Rewrite ONLY media URL attributes for confirmed published Cloud cards.
+
+    This gives first-paint portfolio cards same-origin images immediately, without
+    another anonymous Supabase call. Static/legacy work cards are never touched.
+    No local file means the original Edge URL is retained unchanged.
+    """
+    by_id={info['id'].lower():info for info in docs.values()}
+    item_re=re.compile(r'<article\b(?P<attrs>[^>]*\bdata-aesh-cloud-id="(?P<id>'+UUID+r')"[^>]*)>(?P<body>.*?)</article>',re.I|re.S)
+    media_re=re.compile(r'<div\b[^>]*\bclass="[^"]*\bportfolio-card-media\b[^"]*"[^>]*>',re.I|re.S)
+    def update_card(match):
+        info=by_id.get(match.group('id').lower())
+        if not info:return match.group(0)
+        body=match.group('body')
+        def update_media(media_match):
+            tag=media_match.group(0)
+            for key,attr in (('thumb_local','data-src'),('full_local','data-full-src')):
+                local=info.get(key,'')
+                if local and (root/local.lstrip('/')).is_file():
+                    tag=re.sub(r'\b'+attr+r'="[^"]*"',attr+'="'+local+'"',tag,count=1)
+            return tag
+        body=media_re.sub(update_media,body,count=1)
+        return '<article'+match.group('attrs')+'>'+body+'</article>'
+    changed=0
+    pages=[root/'portfolio/index.html',*(root/'teacher').glob('*/index.html')]
+    for file in pages:
+        if not file.is_file():continue
+        original=file.read_text('utf-8')
+        updated=item_re.sub(update_card,original)
+        if updated!=original:
+            file.write_text(updated,'utf-8')
+            changed+=1
+    return changed
 
 
 def write_home_public_snapshot(root: Path, docs: dict) -> None:
@@ -482,6 +533,10 @@ def run(root, rows, host, cache_media=False):
                 pass
 
     card_count = reconcile_archived_cards(root, set(ids))
+    if cache_media:
+        patched=localize_verified_portfolio_cards(root, docs)
+        if patched:
+            print('AESH approved artwork cards using same-origin cached images:',patched,'HTML files')
     removed_index, added_index = reconcile_search_index(root, docs, existing)
     (root / STATE).write_text(
         json.dumps({'generated': sorted(docs)}, ensure_ascii=False, indent=2) + '\n', 'utf-8'

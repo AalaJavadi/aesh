@@ -13,9 +13,9 @@ if TARGET.exists():
     shutil.rmtree(TARGET)
 TARGET.mkdir()
 SECTIONS = (
-    'assets', 'members', 'studio', 'about', 'courses', 'events', 'faq', 'news',
+    'assets', 'members', 'about', 'courses', 'events', 'faq', 'news',
     'portfolio', 'rules', 'students', 'teachers', 'teacher', 'student', 'work',
-    'course', 'featured', 'editor', 'directory-profile', 'blog',
+    'course', 'featured', 'directory-profile', 'blog',
 )
 TOP = ('index.html', '404.html', 'CNAME', '.nojekyll', 'sitemap.xml',
        'robots.txt', 'favicon.png', 'favicon.ico', 'sw.js')
@@ -24,6 +24,12 @@ for name in SECTIONS:
     if src.is_dir():
         shutil.copytree(src, TARGET / name,
                         ignore=shutil.ignore_patterns('__pycache__', '.DS_Store'))
+# Editor-only bundles are no longer served to visitors; preserve source
+# files in the repository for recovery and internal archive checks.
+for filename in ('aesh-editor-immutable.js','aesh-editor-export.js',
+                 'aesh-editor-bridge.js','aesh-editor-curation.js','aesh-inline-host.css'):
+    item=TARGET/'assets'/filename
+    if item.is_file():item.unlink()
 for name in TOP:
     src = ROOT / name
     if src.is_file():

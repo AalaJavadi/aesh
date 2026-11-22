@@ -50,9 +50,10 @@
    const more=document.createElement('div');more.className='portfolio-card-more';more.textContent='مشاهده صفحه اثر ←';
    body.append(line,t,o,more);card.append(anchor,media,body);
  }
- async function refresh(force=false){if(pending||(!force&&Date.now()-latest<60000))return;
+ async function refresh(force=false,cacheReady=null){if(pending||(!force&&Date.now()-latest<60000))return;
    pending=true;
    try{const rows=await api.publicWorks();if(!Array.isArray(rows))throw Error('پاسخ سرور معتبر نبود.');
+     if(cacheReady)await cacheReady;
      const live=rows.filter(valid),ids=new Set(live.map(r=>String(r.id).toLowerCase()));
      // Only a successful server snapshot authorizes removing an archived cloud card.
      for(const card of root.querySelectorAll('.portfolio-card[data-aesh-cloud-id]')){
@@ -79,7 +80,12 @@
      pending=false;
    }
  }
- if('requestIdleCallback' in window)window.requestIdleCallback(()=>{loadApprovedCache().finally(()=>refresh(true));},{timeout:1200});
- else setTimeout(()=>{loadApprovedCache().finally(()=>refresh(true));},350);
+ function start(){
+   // The Supabase RPC and same-origin image cache lookup run concurrently.
+   const ready=loadApprovedCache();
+   refresh(true,ready);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+ else start();
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});window.addEventListener('focus',()=>refresh());
 })();

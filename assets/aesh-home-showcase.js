@@ -108,9 +108,10 @@
    let started=false;
    async function start(){
      if(started)return;started=true;
-     await loadApproved();
-     // Independent reads: a slow member directory never stalls public work cards.
-     api.publicWorks().then(updateWorks).catch(()=>{});
+     const cachePromise=loadApproved();
+     // Start the public RPC immediately: local cache discovery must not add
+     // another 2.5 s to remote works. Never display cached unverified works.
+     api.publicWorks().then(async rows=>{await cachePromise;updateWorks(rows);}).catch(()=>{});
      api.publicDirectory().then(rows=>{if(!Array.isArray(rows))return;
        const frag=document.createDocumentFragment();
        for(const row of rows){const item=teacherItem(row);if(item)frag.append(item);}

@@ -1,0 +1,19 @@
+/* Authenticated-only UI navigation. Changes no roles, forms or RPC permissions. */
+#aeshPanelLayout{display:grid;grid-template-columns:minmax(195px,245px) minmax(0,1fr);gap:20px;align-items:start}
+#aeshPanelLayout [hidden]{display:none!important}
+#aeshPanelLayout .aesh-panel-sidebar{position:sticky;top:95px;align-self:start;border-radius:24px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);padding:20px 12px;box-shadow:var(--sh2);max-height:calc(100vh - 115px);overflow-y:auto}
+.aesh-panel-sidebar-title{font-size:1rem;font-weight:900;margin:0 10px 14px;color:var(--i900,#122033)}
+.aesh-panel-nav{display:flex;flex-direction:column;gap:7px}
+.aesh-panel-nav button,.aesh-panel-nav a{display:block;text-align:right;padding:12px 13px;line-height:1.7;border:1px solid transparent;border-radius:13px;background:transparent;color:var(--text,#18212d);font:inherit;font-size:.82rem;font-weight:780;cursor:pointer;text-decoration:none}
+.aesh-panel-nav button[aria-current="page"],.aesh-panel-nav button:hover,.aesh-panel-nav a:hover{background:var(--g100,#fff6d7);color:#77520a;border-color:rgba(239,181,29,.2)}
+.aesh-panel-nav button:focus-visible,.aesh-panel-nav a:focus-visible,.aesh-panel-shortcuts button:focus-visible{outline:3px solid #e5b52a;outline-offset:2px}
+.aesh-panel-sidebar-hint{font-size:.74rem;color:var(--muted,#64748b);margin:20px 10px 0;line-height:1.8}
+.aesh-panel-main{min-width:0}
+.aesh-panel-overview{min-height:240px}
+.aesh-panel-overview h2{font-size:1.5rem!important}
+.aesh-panel-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:25px 0}
+.aesh-panel-shortcuts button{padding:15px 13px;border:1px solid var(--border,#e2e8f0);border-radius:16px;text-align:right;background:var(--i50,#f8fafc);font:inherit;font-size:.84rem;font-weight:800;cursor:pointer}
+.aesh-panel-shortcuts button:hover{border-color:#e5b52a;background:var(--g100,#fff6d7)}
+.aesh-panel-note{margin:10px 0 0;color:var(--muted,#64748b);font-size:.79rem;line-height:1.9}
+@media(max-width:870px){#aeshPanelLayout{grid-template-columns:1fr;gap:14px}#aeshPanelLayout .aesh-panel-sidebar{position:static;max-height:unset}.aesh-panel-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}}
+@media(max-width:500px){.aesh-panel-nav{grid-template-columns:1fr 1fr}.aesh-panel-nav button,.aesh-panel-nav a{font-size:.75rem;padding:10px 8px}.aesh-panel-shortcuts{grid-template-columns:1fr}}

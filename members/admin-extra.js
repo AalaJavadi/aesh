@@ -107,7 +107,29 @@
        const label=item((row.role==='teacher'?'استاد':'هنرجو')+' — '+row.display_name+' ('+row.owner_slug+')');
        const flag=item(row.published?'قابل مشاهده در فهرست':'پیش‌نویس منتشرنشده','secondary');
        const edit=document.createElement('button');edit.type='button';edit.className='outline';edit.textContent='ویرایش';edit.addEventListener('click',()=>fillForm(row));
-       card.append(label,flag,edit);wrap.append(card);
+       // Reversible unpublish only; this does not delete Auth users or private data.
+       // Server-side owner RPC continues to enforce access control.
+       const toggle=document.createElement('button');toggle.type='button';toggle.className='outline';
+       toggle.textContent=row.published?'لغو انتشار پروفایل':'انتشار پروفایل';
+       toggle.addEventListener('click',async()=>{
+         if(!owner||busy)return;
+         const action=row.published?'از نمایش عمومی خارج شود':'به صورت عمومی نمایش داده شود';
+         if(!window.confirm('آیا پروفایل «'+row.display_name+'» '+action+'؟ این کار حساب ورود را حذف نمی‌کند.'))return;
+         busy=true;toggle.disabled=true;edit.disabled=true;
+         try{
+           await api.ownerSaveDirectory({
+             p_id:row.id,p_role:row.role,p_owner_slug:row.owner_slug,
+             p_display_name:row.display_name,p_specialty:row.specialty||'',
+             p_skills:row.skills||'',p_bio:row.bio||'',
+             p_image_path:row.image_path||null,p_published:!row.published,
+             p_extra:row.extra&&typeof row.extra==='object'&&!Array.isArray(row.extra)?row.extra:{}
+           });
+           note('directoryNotice','وضعیت نمایش پروفایل ذخیره شد. برای به‌روزرسانی صفحه‌های ایندکس‌شده، انتشار امن GitHub Pages را بررسی کن.');
+           await reloadDirectory();
+         }catch(err){note('directoryNotice','تغییر وضعیت انجام نشد: '+err.message,true);}
+         finally{busy=false;toggle.disabled=false;edit.disabled=false;}
+       });
+       card.append(label,flag,edit,toggle);wrap.append(card);
      }
    }catch(err){wrap.textContent='دریافت رکوردها ممکن نیست: '+err.message;}
  }

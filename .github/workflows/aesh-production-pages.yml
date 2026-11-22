@@ -85,7 +85,7 @@ jobs:
       # is explicitly opt-in and checks restored backup signoff + FULL legacy IDs.
       - name: Fetch and render ONLY currently published Supabase works
         if: ${{ vars.AESH_PUBLIC_SOURCE != 'cloudflare-verified' }}
-        run: python tools/sync_cloud_share.py
+        run: python tools/sync_cloud_share.py --cache-media
       - name: Verify optional directory without modifying old members
         if: ${{ vars.AESH_PUBLIC_SOURCE != 'cloudflare-verified' }}
         shell: bash

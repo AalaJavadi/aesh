@@ -11,12 +11,29 @@
  firstSyncStatus.textContent='';
  root.before(firstSyncStatus);
  let pending=false,latest=0,firstSync=true;
+ const cached=new Map();
+ async function loadApprovedCache(){
+   try{
+     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),650);
+     try{
+       const res=await fetch('/assets/aesh-published-showcase.json',{cache:'no-cache',signal:controller.signal});
+       if(!res.ok)return;
+       const data=await res.json();
+       if(!Array.isArray(data.works))return;
+       for(const item of data.works){
+         const uuid=String(item.id||'').toLowerCase(),path=String(item.thumb||'');
+         if(/^[0-9a-f]{8}-[0-9a-f-]{27,}$/.test(uuid) &&
+           /^\/assets\/approved-works\/[0-9a-f-]{36}-thumb\.webp$/.test(path)) cached.set(uuid,path);
+       }
+     }finally{clearTimeout(timer);}
+   }catch(_){/* Published works still work without a same-origin cache. */}
+ }
  function valid(r){return r&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(r.id||''))&&
    ['teacher','student'].includes(r.owner_role)&&['aesh-member-works','aesh-owner-works'].includes(r.bucket_id)&&
    r.slug&&/^[\w\u0600-\u06ff]+(?:-[\w\u0600-\u06ff]+)*$/u.test(r.slug)&&
    (r.status===undefined||r.status==='published')&&api.publicWorkMedia(r.bucket_id,r.object_path)&&api.publicWorkMedia('aesh-work-thumbs',r.thumb_path);}
  function stamp(r){const card=document.createElement('article');card.className='portfolio-card';card.dataset.aeshCloudId=r.id;return card;}
- function fill(card,r){const src=api.publicWorkMedia('aesh-work-thumbs',r.thumb_path);
+ function fill(card,r){const src=cached.get(String(r.id).toLowerCase())||api.publicWorkMedia('aesh-work-thumbs',r.thumb_path);
    const full=api.publicWorkMedia(r.bucket_id,r.object_path);
    const title=String(r.title||'نمونه‌کار').slice(0,130);
    card.dataset.ownerType=r.owner_role;card.dataset.itemId='cloud-'+r.id;card.dataset.slug=r.slug;
@@ -62,7 +79,7 @@
      pending=false;
    }
  }
- if('requestIdleCallback' in window)window.requestIdleCallback(()=>refresh(true),{timeout:1200});
- else setTimeout(()=>refresh(true),350);
+ if('requestIdleCallback' in window)window.requestIdleCallback(()=>{loadApprovedCache().finally(()=>refresh(true));},{timeout:1200});
+ else setTimeout(()=>{loadApprovedCache().finally(()=>refresh(true));},350);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});window.addEventListener('focus',()=>refresh());
 })();

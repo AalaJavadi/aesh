@@ -115,11 +115,42 @@ window.aeshRedrawPortfolio=redrawPortfolio;
 window.setPortfolioFilter=function(f){portfolioFilter=['all','teacher','student'].includes(f)?f:'all';galleryCount=12;$$('.portfolio-tab').forEach(x=>x.classList.toggle('active',x.dataset.filter===portfolioFilter));redrawPortfolio();};
 window.showMorePortfolio=function(){galleryCount+=12;redrawPortfolio();};
 let thumbObserver;
-function hydratePortfolio(){const nodes=$$('.portfolio-card-media[data-src]');function fill(el){const url=el.getAttribute('data-src');if(!url||el.querySelector('img'))return;const img=document.createElement('img');img.src=url;img.alt=el.getAttribute('data-alt')||'نمونه‌کار';img.decoding='async';if(el.getBoundingClientRect().top<innerHeight*.95){img.loading='eager';img.fetchPriority='high';}else{img.loading='lazy';}// Keep first visible published artwork prioritized.
- img.addEventListener('load',()=>{el.style.setProperty('--portfolio-bg','url('+JSON.stringify(img.currentSrc||img.src)+')');el.classList.remove('portfolio-loading');});
- img.addEventListener('error',()=>{if(el.dataset.fullSrc&&img.src!==el.dataset.fullSrc)img.src=el.dataset.fullSrc},{once:true});el.appendChild(img);}
- if(!('IntersectionObserver' in window)){nodes.forEach(fill);return;}if(!thumbObserver)thumbObserver=new IntersectionObserver(es=>es.forEach(ent=>{if(ent.isIntersecting){fill(ent.target);thumbObserver.unobserve(ent.target)}}),{rootMargin:'320px'});
- nodes.forEach(el=>{if(el.closest('[data-filter-hidden="true"],[data-more-hidden="true"]'))return;thumbObserver.observe(el)});}
+function hydratePortfolio(){
+ const nodes=$$('.portfolio-card-media[data-src]');
+ function fill(el){
+   const url=el.getAttribute('data-src');if(!url||el.querySelector('img'))return;
+   const img=document.createElement('img');img.alt=el.getAttribute('data-alt')||'نمونه‌کار';img.decoding='async';
+   if(el.getBoundingClientRect().top<innerHeight*.95){img.loading='eager';img.fetchPriority='high';}
+   else img.loading='lazy';
+   let timer=null,failed=false;
+   function clear(){if(timer!==null){clearTimeout(timer);timer=null;}}
+   function fallback(){
+     if(failed)return;failed=true;clear();el.classList.remove('portfolio-loading');
+     img.hidden=true;img.removeAttribute('src');
+     const holder=document.createElement('div');holder.className='aesh-image-unavailable';
+     const text=document.createElement('span');text.textContent='تصویر فعلاً در دسترس نیست';
+     const retry=document.createElement('button');retry.type='button';retry.textContent='تلاش دوباره';
+     retry.addEventListener('click',event=>{event.stopPropagation();holder.remove();img.remove();el.classList.add('portfolio-loading');fill(el);});
+     holder.append(text,retry);el.append(holder);
+   }
+   img.addEventListener('load',()=>{clear();if(failed)return;
+     el.style.setProperty('--portfolio-bg','url('+JSON.stringify(img.currentSrc||img.src)+')');el.classList.remove('portfolio-loading');
+   });
+   img.addEventListener('error',()=>{
+     if(failed)return;
+     const full=el.dataset.fullSrc;
+     if(full&&img.src!==full){img.src=full;return;}
+     fallback();
+   });
+   el.append(img);img.src=url;
+   timer=setTimeout(fallback,9000); // a blocked media host must not leave an endless spinner
+ }
+ if(!('IntersectionObserver' in window)){nodes.forEach(fill);return;}
+ if(!thumbObserver)thumbObserver=new IntersectionObserver(es=>es.forEach(ent=>{
+    if(ent.isIntersecting){fill(ent.target);thumbObserver.unobserve(ent.target);}
+ }),{rootMargin:'320px'});
+ nodes.forEach(el=>{if(el.closest('[data-filter-hidden="true"],[data-more-hidden="true"]'))return;thumbObserver.observe(el);});
+}
 window.filterPeople=function(gridId){const input=$(gridId==='teachersGrid'?'tSearch':'sSearch');const term=(input?.value||'').trim().toLowerCase();const grid=$(gridId);if(!grid)return;const parent=gridId==='teachersGrid'?'tChips':'sChips';const role=$(parent)?.querySelector('.chip.active')?.dataset.role||'all';let count=0;
  for(const card of $$('.person-card',grid)){const txt=(card.textContent||'').toLowerCase(),actual=(card.querySelector('.person-role')?.textContent||'').trim();const ok=(!term||txt.includes(term))&&(role==='all'||role===actual);card.classList.toggle('hidden',!ok);if(ok)count++;}
  const empty=$(gridId==='teachersGrid'?'tEmpty':'sEmpty');if(empty)empty.style.display=count?'none':'block';};

@@ -1,0 +1,33 @@
+/* AESH safe homepage enhancements: no global style or theme changes. */
+.aesh-home-rail-section{padding-top:42px;padding-bottom:52px;background:linear-gradient(180deg,transparent,rgba(245,179,1,.035))}
+.aesh-home-works-section{background:var(--i50,#f8fafc);padding-top:65px;padding-bottom:70px}
+html[data-theme="dark"] .aesh-home-works-section{background:#111a2c}
+.aesh-showcase-heading{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:22px}
+.aesh-showcase-heading .section-title{margin:0 0 6px}
+.aesh-showcase-heading .section-desc{margin:0;max-width:750px}
+.aesh-all-link{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);padding:9px 16px;border-radius:999px;font-size:.83rem;font-weight:800;white-space:nowrap}
+.aesh-all-link:hover,.aesh-teacher-item:hover{border-color:#e5b327;box-shadow:0 8px 25px rgba(120,90,30,.07)}
+.aesh-teacher-rail{display:flex;overflow-x:auto;gap:15px;scroll-snap-type:x mandatory;scrollbar-width:thin;scroll-padding-inline:10px;overscroll-behavior-inline:contain;padding:8px 3px 18px;direction:rtl}
+.aesh-teacher-item{scroll-snap-align:start;flex:0 0 167px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:19px;padding:19px 9px 17px;transition:border-color .2s,box-shadow .2s}
+.aesh-teacher-avatar{position:relative;border-radius:50%;width:110px;height:110px;display:grid;place-items:center;background:linear-gradient(135deg,#ffedc7,#e7edf4);overflow:hidden;border:4px solid rgba(245,179,1,.12)}
+.aesh-teacher-avatar img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;border-radius:50%;background:#f8fafc}
+.aesh-media-placeholder{position:absolute;inset:0;display:grid;place-items:center;font-size:.9rem;font-weight:700;color:#65748b}
+.aesh-teacher-avatar .aesh-media-placeholder{font-size:2.1rem}
+.aesh-teacher-item strong{font-size:.88rem;line-height:1.65;max-width:100%;white-space:normal;color:var(--text,#172033)}
+.aesh-teacher-item small{font-size:.74rem;color:var(--muted,#64748b);line-height:1.6;max-width:100%}
+.aesh-rail-controls{display:flex;gap:7px;justify-content:flex-end;margin-top:-10px;margin-bottom:9px}
+.aesh-rail-controls button{width:35px;height:35px;border:1px solid var(--border,#ddd);border-radius:50%;background:var(--surface,#fff);font-size:18px;line-height:1;cursor:pointer}
+.aesh-rail-controls button:focus-visible,.aesh-all-link:focus-visible,.aesh-teacher-item:focus-visible,.aesh-new-work a:focus-visible{outline:3px solid #e5ac16;outline-offset:2px}
+.aesh-latest-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.aesh-new-work{min-width:0;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:18px;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.025);transition:transform .2s,box-shadow .2s}
+.aesh-new-work:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.07)}
+.aesh-new-work>a{display:flex;flex-direction:column;height:100%;padding-bottom:15px}
+.aesh-new-work-media{position:relative;display:grid;place-items:center;background:linear-gradient(135deg,#e9eef4,#fcf4df);height:auto;aspect-ratio:4/3;overflow:hidden}
+.aesh-new-work-media img{z-index:1;width:100%;height:100%;object-fit:cover;background:#f0f1f4}
+.aesh-new-work-media img[hidden],.aesh-teacher-avatar img[hidden]{display:none}
+.aesh-new-work .aesh-work-meta{font-size:.72rem;color:#8b6109;padding:13px 13px 0;font-weight:800}
+.aesh-new-work strong{font-size:.91rem;line-height:1.65;padding:6px 13px 0;color:var(--text,#1e293b);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.aesh-new-work small{color:var(--muted,#64748b);font-size:.78rem;line-height:1.7;padding:5px 13px 0;margin-top:auto}
+@media(max-width:900px){.aesh-latest-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:680px){.aesh-showcase-heading{align-items:start;flex-direction:column}.aesh-latest-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.aesh-new-work strong{font-size:.8rem}.aesh-new-work small{font-size:.73rem}.aesh-teacher-item{flex-basis:145px}.aesh-teacher-avatar{width:98px;height:98px}}
+@media(prefers-reduced-motion:reduce){.aesh-new-work,.aesh-teacher-item{transition:none}}

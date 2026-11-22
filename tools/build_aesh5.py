@@ -450,6 +450,24 @@ def base_html(original,body,route,kind,metadata,d,legacy_doc=None,identity=None)
     footer=bodytag.find('footer')
     if footer:footer.insert_before(body)
     else:bodytag.append(body)
+    # Reattach reviewed, local public sections in the generated HOME page.
+    # This must run AFTER the selected page body has entered the document,
+    # otherwise the homepage cannot find the feature and contact anchors.
+    if route == '/':
+        extra_file=ROOT/'assets/aesh-home-sections.html'
+        if extra_file.is_file():
+            home=bodytag.find(id='page-home')
+            if home is None:raise RuntimeError('Homepage container missing for showcase')
+            extras=BeautifulSoup(extra_file.read_text('utf-8'),'html.parser')
+            for selector,marker in (('section.aesh-home-rail-section','home.feat.label'),
+                                    ('section.aesh-home-works-section','home.contact.label')):
+                section=extras.select_one(selector)
+                anchor=home.find(attrs={'data-key':marker})
+                anchor=anchor.find_parent('section') if anchor else None
+                if section is None or anchor is None:
+                    raise RuntimeError('Unable to preserve reviewed homepage showcase: '+marker)
+                if not home.select_one(selector):anchor.insert_before(section.extract())
+        head.append(doc.new_tag('link',rel='stylesheet',href='/assets/aesh-home-showcase.css?v=1'))
     for x in bodytag.select('.add-btn,.del-btn,.item-edit,.person-edit,.portfolio-edit,.portfolio-del,.featured-edit,.add-tile,.stat-edit,.stat-del,.award-del,.award-edit,.portfolio-admin-note'):
         x.decompose()
     for x in bodytag.find_all(attrs={'contenteditable':True}):x.attrs.pop('contenteditable',None)
@@ -482,6 +500,7 @@ def base_html(original,body,route,kind,metadata,d,legacy_doc=None,identity=None)
         bodytag.append(doc.new_tag('script',src='/assets/aesh-directory.js?v=5.0',defer=True))
     if route=='/':
         bodytag.append(doc.new_tag('script',src='/assets/aesh-home-stats.js?v=5.0',defer=True))
+        bodytag.append(doc.new_tag('script',src='/assets/aesh-home-showcase.js?v=1',defer=True))
     if route=='/portfolio/':
         bodytag.append(doc.new_tag('script',src='/assets/aesh-cloud-gallery.js?v=5.0',defer=True))
     if kind=='teacher':

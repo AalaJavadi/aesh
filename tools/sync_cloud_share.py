@@ -8,6 +8,7 @@ Usage: python tools/sync_cloud_share.py [--fixture path] [--root path]
 from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import escape
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
@@ -26,7 +27,9 @@ THUMB_RE = re.compile(rf'^{UUID}/{UUID}\.webp$')
 WORK_IMAGE_RE = re.compile(rf'^{UUID}/{UUID}\.(?:webp|png|jpg)$')
 SLUG_RE = re.compile(r'^[\w\u0600-\u06ff]+(?:-[\w\u0600-\u06ff]+)*$',re.UNICODE)
 NS = 'http://www.sitemaps.org/schemas/sitemap/0.9'
+IMAGE_NS = 'http://www.google.com/schemas/sitemap-image/1.1'
 ET.register_namespace('', NS)
+ET.register_namespace('image', IMAGE_NS)
 
 def config(root:Path):
     txt=(root/'assets/aesh-config.js').read_text('utf-8')
@@ -72,6 +75,115 @@ def clean_row(row,host):
             'owner':str(row.get('owner_name') or '').strip()[:130],
             'desc':str(row.get('description') or '').strip()[:280]}
 
+def _image_magic(data: bytes, extension: str) -> bool:
+    if extension == 'webp': return data[:4] == b'RIFF' and data[8:12] == b'WEBP'
+    if extension == 'jpg': return data.startswith(b'\xff\xd8\xff')
+    if extension == 'png': return data.startswith(b'\x89PNG\r\n\x1a\n')
+    return False
+
+
+def cache_approved_media(root: Path, docs: dict, host: str) -> None:
+    """Best-effort local copies of ONLY currently approved media.
+
+    Reads nothing beyond the authoritative public-work RPC result. The Edge
+    gateway must independently authorize each GET; pending/private media is
+    never read from Supabase Storage using a privileged key.
+    """
+    folder = root / 'assets' / 'approved-works'
+    folder.mkdir(parents=True, exist_ok=True)
+    # Cache the most recent two dozen; no unbounded requests or giant files.
+    from datetime import datetime
+    def when(info):
+        row=info['raw']
+        try:return datetime.fromisoformat(str(row.get('published_at') or row.get('created_at') or '').replace('Z','+00:00')).timestamp()
+        except (ValueError,OverflowError):return 0.0
+    recent=sorted(docs.values(),key=when,reverse=True)[:24]
+    tasks=[]
+    for info in recent:
+        raw=info['raw']
+        for typ,bucket,path,ext in (
+            ('thumb','aesh-work-thumbs',raw['thumb_path'],'webp'),
+            ('full',raw['bucket_id'],raw['object_path'],raw['object_path'].rsplit('.',1)[-1].lower()),
+        ):
+            dest=folder / (info['id']+'-'+typ+'.'+ext)
+            url=host+'/functions/v1/aesh-approved-media/'+bucket+'/'+quote(path,safe='/')
+            tasks.append((info['id'],typ,ext,url,dest))
+    def fetch_media(task):
+        identifier,typ,ext,url,dest=task
+        try:
+            req=Request(url,headers={'Accept':'image/webp,image/jpeg,image/png'})
+            with urlopen(req,timeout=5) as response:
+                data=response.read(450_001)
+            if not 0<len(data)<=450_000 or not _image_magic(data,ext):
+                raise ValueError('Not a bounded valid image')
+            # Atomic replacement: never persist a truncated download.
+            tmp=dest.with_suffix(dest.suffix+'.tmp')
+            tmp.write_bytes(data)
+            tmp.replace(dest)
+            return identifier,typ,'/assets/approved-works/'+dest.name
+        except (OSError, ValueError, URLError, HTTPError) as err:
+            print('WARN | approved image not cached:',identifier[:8],typ,str(err)[:90])
+            return identifier,typ,None
+    success=0
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        for identifier,typ,relative in executor.map(fetch_media,tasks):
+            if relative:
+                success+=1
+                for info in docs.values():
+                    if info['id']==identifier:
+                        info[typ+'_local']=relative
+                        break
+    # Valid authoritative RPC result permits removing only prior generated
+    # thumbnail/full filenames not in this exact successful snapshot.
+    expected={Path(info[key]).name for info in docs.values()
+              for key in ('thumb_local','full_local') if info.get(key)}
+    for old in folder.iterdir():
+        if old.is_file() and re.fullmatch(rf'{UUID}-(?:thumb|full)\.(?:jpg|png|webp)',old.name,re.I) and old.name not in expected:
+            old.unlink()
+    print('AESH approved public media cached:',success,'/',len(tasks),'(no private buckets copied)')
+
+
+def write_home_public_snapshot(root: Path, docs: dict) -> None:
+    """Public-only metadata; no member emails, tokens or private rows."""
+    from datetime import datetime
+    def when(info):
+        row=info['raw']
+        try:return datetime.fromisoformat(str(row.get('published_at') or row.get('created_at') or '').replace('Z','+00:00')).timestamp()
+        except (ValueError,OverflowError):return 0.0
+    entries=[]
+    for info in sorted(docs.values(),key=when,reverse=True)[:24]:
+        row=info['raw']
+        entries.append({'id':info['id'],'slug':info['slug'],
+                        'title':info['title'],'owner_name':info['owner'],
+                        'owner_role':row['owner_role'],
+                        'published_at':str(row.get('published_at') or row.get('created_at') or ''),
+                        'thumb':info.get('thumb_local','')})
+    (root/'assets/aesh-published-showcase.json').write_text(
+        json.dumps({'works':entries},ensure_ascii=False,indent=2)+'\n','utf-8')
+
+
+def enhance_artwork_seo(html: str, info: dict) -> str:
+    """Search + social image metadata for a verified published work only."""
+    image=info['image']
+    owner=info['owner']
+    url='https://aesh.ir/work/'+quote(info['slug'],safe='')+'/'
+    graph={'@context':'https://schema.org','@type':'VisualArtwork',
+           '@id':url+'#artwork','name':info['title'],
+           'url':url,'mainEntityOfPage':url,
+           'image':{'@type':'ImageObject','url':image,'contentUrl':image,
+                    'caption':info['title']+' — '+owner},
+           'creator':{'@type':'Person','name':owner},
+           'description':info['desc']}
+    when=info['raw'].get('published_at') or info['raw'].get('created_at')
+    if when:graph['datePublished']=str(when)
+    safe_json=json.dumps(graph,ensure_ascii=False).replace('<','\\u003c')
+    # Explicit OG image alt and twitter card for crawlers that do not use JSON-LD.
+    content=(f'<meta property="og:image:alt" content="{escape(info["title"]+" — "+owner,quote=True)}"/>'
+             '<meta name="twitter:card" content="summary_large_image"/>'
+             '<script type="application/ld+json">'+safe_json+'</script>')
+    return html.replace('</head>',content+'</head>',1)
+
+
 def document(row,host):
     """Generate a genuine self-contained artwork page (NEVER document.write/index fetch)."""
     from bs4 import BeautifulSoup
@@ -80,8 +192,8 @@ def document(row,host):
     work={'id':'cloud-'+row['id'],'_aesh_cloud':True,'_aesh_key':'cloud:'+row['id'],
       'slug':row['slug'],'title':row['title'],'ownerName':row['owner'],
       'ownerType':legacy.get('owner_role'),'ownerSlug':legacy.get('owner_slug'),
-      'desc':legacy.get('description'),'image':host+'/functions/v1/aesh-approved-media/'+legacy['bucket_id']+'/'+quote(legacy['object_path'],safe='/'),
-      'thumb':row['image'],'fullWidth':legacy.get('full_width') or legacy.get('width') or 0,
+      'desc':legacy.get('description'),'image':row.get('full_local') or host+'/functions/v1/aesh-approved-media/'+legacy['bucket_id']+'/'+quote(legacy['object_path'],safe='/'),
+      'thumb':row.get('thumb_local') or row['image'],'fullWidth':legacy.get('full_width') or legacy.get('width') or 0,
       'fullHeight':legacy.get('full_height') or legacy.get('height') or 0}
     base=BeautifulSoup(m.SOURCE_TEMPLATE.read_text('utf-8'),'html.parser')
     content=m.load_json_from_page(m.ROOT/'tools/aesh5-source.html')
@@ -89,6 +201,7 @@ def document(row,host):
     route='/work/'+row['slug']+'/'
     title=row['title']+' | '+row['owner']+' | AESH'
     page=m.base_html(base,body,route,'work',(title,row['desc'],row['image']),content,None,work)
+    page=enhance_artwork_seo(page,row)
     return page.replace('</body>',MARKER+'</body>')
 
 def sync_public_profile_images(root:Path, profiles, host:str):
@@ -197,7 +310,7 @@ def _site_url(root, path):
     return _site_base(root) + '/' + quote(path.removesuffix('index.html'), safe='/')
 
 
-def write_sitemap(root, add_urls, previous_urls):
+def write_sitemap(root, add_urls, previous_urls, image_urls=None):
     file = root / 'sitemap.xml'
     if not file.exists():
         return
@@ -222,6 +335,10 @@ def write_sitemap(root, add_urls, previous_urls):
         node = ET.SubElement(parent, url_tag)
         ET.SubElement(node, loc_tag).text = url
         ET.SubElement(node, last_tag).text = current_date
+        image = (image_urls or {}).get(url)
+        if image and image.startswith('https://'):
+            picture = ET.SubElement(node, f'{{{IMAGE_NS}}}image')
+            ET.SubElement(picture, f'{{{IMAGE_NS}}}loc').text = image
     ET.indent(tree, space='  ')
     file.write_bytes(ET.tostring(parent, encoding='utf-8', xml_declaration=True))
 
@@ -293,7 +410,7 @@ def reconcile_search_index(root, published, existing):
     return removed, added
 
 
-def run(root, rows, host):
+def run(root, rows, host, cache_media=False):
     """Treat a fully parsed, valid RPC result as the ONLY deletion authority.
 
     Failure, malformed response or duplicate UUIDs abort BEFORE any writes.
@@ -326,6 +443,19 @@ def run(root, rows, host):
     # on an RPC/network error run() is never invoked and nothing is touched.
     old_paths = (set(existing) | obsolete_shells
                  | {path for path in before_state if not (root / path).is_file()})
+    # Refuse path collisions BEFORE attempting any optional image caching.
+    for path, entry in docs.items():
+        file=root/path
+        if file.exists() and existing.get(path) != entry['id'] and path not in obsolete_shells:
+            raise RuntimeError('Refusing to overwrite a different or static work page: '+path)
+    if cache_media:
+        cache_approved_media(root,docs,host)
+        for info in docs.values():
+            # Prefer the locally served, approved full image for search/social.
+            # A locally cached thumb is a safe fallback for a remote-only full.
+            local=info.get('full_local') or info.get('thumb_local')
+            if local:info['image']='https://aesh.ir'+local
+        write_home_public_snapshot(root,docs)
     rendered = {}
     for path, entry in docs.items():
         file = root / path
@@ -360,8 +490,10 @@ def run(root, rows, host):
     new_urls = {_site_url(root, path) for path in docs}
     # A published old-format wrapper may be absent from sitemap even when the
     # before/after URL sets are equal. Reconcile its verified route explicitly.
-    if old_urls != new_urls or obsolete_shells:
-        write_sitemap(root, new_urls, old_urls)
+    if old_urls != new_urls or obsolete_shells or cache_media:
+        image_urls={_site_url(root,path):(info.get('full_local') or info.get('thumb_local')) for path,info in docs.items() if (info.get('full_local') or info.get('thumb_local'))}
+        image_urls={url:'https://aesh.ir'+local for url,local in image_urls.items()}
+        write_sitemap(root,new_urls,old_urls,image_urls)
     print('Cloud work previews synced:', len(docs), 'published works; removed',
           len(removed), 'stale Cloud HTML; removed', card_count, 'stale cards;',
           removed_index, 'stale search items;', added_index, 'new search items')
@@ -370,9 +502,10 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--fixture',help='Read mock public RPC response from local JSON file, for testing')
     parser.add_argument('--root',type=Path,default=ROOT)
+    parser.add_argument('--cache-media',action='store_true',help='Cache only currently published public image bytes during a live build')
     args=parser.parse_args()
     if args.fixture:
         rows=json.loads(Path(args.fixture).read_text('utf-8'));host='https://example.supabase.co';profiles=[]
     else:rows,host,profiles=public_rows(args.root)
-    run(args.root,rows,host)
+    run(args.root,rows,host,cache_media=(args.cache_media and not args.fixture))
     sync_public_profile_images(args.root,profiles,host)

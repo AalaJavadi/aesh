@@ -13,6 +13,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" media="print" data-aesh-noncritical-css="1">
   <link rel="stylesheet" href="members.css?v=3.23">
+  <link rel="stylesheet" href="aesh-panel-navigation.css?v=1">
 </head>
 <body>
   <header class="header">
@@ -65,7 +66,34 @@
         <button id="logoutButton" class="outline" type="button"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg> خروج از حساب</button>
       </div>
 
-      <div class="section-intro"><div><span class="eyebrow">حساب کاربری</span><h2>مدیریت پروفایل</h2></div><p>اطلاعاتی را که امکان ویرایش دارند، از این بخش به‌روز کنید.</p></div>
+      <div class="aesh-panel-layout" id="aeshPanelLayout">
+        <aside class="aesh-panel-sidebar" id="aeshPanelSidebar" aria-label="بخش‌های پنل مدیریت" hidden>
+          <p class="aesh-panel-sidebar-title" id="aeshSidebarTitle">بخش‌های پنل</p>
+          <nav class="aesh-panel-nav" aria-label="انتخاب بخش پنل">
+            <button type="button" data-aesh-view="overview" aria-current="page">🏠 صفحه اصلی پنل</button>
+            <button type="button" data-aesh-view="profile">👤 مدیریت پروفایل من</button>
+            <button type="button" data-aesh-view="works">🖼️ ارسال نمونه‌کار</button>
+            <button type="button" data-aesh-view="moderation" data-aesh-owner-only hidden>✅ تأیید نمونه‌کارها</button>
+            <button type="button" data-aesh-view="directory" data-aesh-owner-only hidden>👥 افزودن و ویرایش اعضا</button>
+            <button type="button" data-aesh-view="reviews" data-aesh-owner-only hidden>💬 مدیریت نظرات</button>
+            <a href="/editor/" data-aesh-owner-only hidden>✏️ ویرایش متن‌ها و صفحات <span aria-hidden="true">↗</span></a>
+          </nav>
+          <p class="aesh-panel-sidebar-hint">تغییر بخش، اطلاعاتِ ذخیره‌نشده فرم را پاک نمی‌کند.</p>
+        </aside>
+        <div class="aesh-panel-main">
+          <section id="aeshPanelOverview" class="box aesh-panel-overview" hidden aria-label="خلاصه پنل">
+            <span class="eyebrow">مرکز مدیریت انجمن</span>
+            <h2 id="aeshOverviewTitle">به پنل خود خوش آمدید</h2>
+            <p class="secondary" id="aeshOverviewDescription">برای مدیریت اطلاعات، ارسال نمونه‌کار و سایر فعالیت‌ها، بخش موردنظر را از منوی کناری انتخاب کنید.</p>
+            <div class="aesh-panel-shortcuts">
+              <button type="button" data-aesh-shortcut="profile">ویرایش پروفایل</button>
+              <button type="button" data-aesh-shortcut="works">ارسال نمونه‌کار</button>
+              <button type="button" data-aesh-shortcut="directory" data-aesh-owner-only hidden>مدیریت اعضا</button>
+              <button type="button" data-aesh-shortcut="moderation" data-aesh-owner-only hidden>آثار در انتظار تأیید</button>
+            </div>
+            <p class="aesh-panel-note" id="aeshOverviewNote">حذف حساب ورود اعضا و تغییر دسترسی‌ها صرفاً با مجوزهای سمت سرور انجام می‌شود؛ این پنل دسترسی جدیدی ایجاد نمی‌کند.</p>
+          </section>
+      <div class="section-intro" id="aeshMemberProfileIntro"><div><span class="eyebrow">حساب کاربری</span><h2>مدیریت پروفایل</h2></div><p>اطلاعاتی را که امکان ویرایش دارند، از این بخش به‌روز کنید.</p></div>
       <div class="columns" id="profileColumns">
         <section class="box editor">
           <div class="box-heading"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16 4l4 4-11 11H5v-4L16 4Z"/></svg></span><div><h2>ویرایش اطلاعات پروفایل</h2><p class="secondary">تصویر و معرفی شما پس از ذخیره در پروفایل عمومی نمایش داده می‌شود.</p></div></div>
@@ -157,6 +185,8 @@
         <div class="work-heading"><div><span class="eyebrow">ویژه مدیریت</span><h2>نظرات در انتظار تأیید</h2><p class="secondary">هیچ نظر جدیدی پیش از تأیید مدیر نمایش عمومی ندارد.</p></div><button id="adminReviewsRefresh" class="outline" type="button">به‌روزرسانی</button></div>
         <div id="adminReviewsNotice" class="notice" role="status" hidden></div><div id="adminReviewsList" class="aesh-admin-list"></div>
       </section>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -167,5 +197,6 @@
   <script src="members.js?v=5.0.urgent1" defer></script>
   <script src="works-panel.js?v=5.0" defer></script>
   <script src="admin-extra.js?v=5.0" defer></script>
+  <script src="aesh-panel-navigation.js?v=1" defer></script>
 </body>
 </html>

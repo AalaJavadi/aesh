@@ -34,6 +34,29 @@ for name in TOP:
     src = ROOT / name
     if src.is_file():
         shutil.copy2(src, TARGET / name)
+# Legacy teacher/student snapshots may still contain a retired text-editing
+# entry even though newer pages are generated without it. Remove only these
+# exact controls from the staged public HTML, never from the repository source.
+# Keep all unrelated markup, styling, images, and member management intact.
+retired_editor_patterns = (
+    re.compile(r'<button\b(?=[^>]*\bid\s*=\s*["\']editBtn["\'])[^>]*>.*?</button\s*>', re.I | re.S),
+    re.compile(r'<a\b(?=[^>]*\bhref\s*=\s*["\'](?:/|\./)?editor/["\'])[^>]*>.*?</a\s*>', re.I | re.S),
+)
+retired_entries = 0
+retired_pages = 0
+for page in TARGET.rglob('*.html'):
+    original = page.read_text('utf-8')
+    sanitized = original
+    for pattern in retired_editor_patterns:
+        sanitized, count = pattern.subn('', sanitized)
+        retired_entries += count
+    if sanitized != original:
+        page.write_text(sanitized, 'utf-8')
+        retired_pages += 1
+if retired_entries:
+    print('AESH: excluded', retired_entries,
+          'retired editor entry(s) from', retired_pages, 'staged public HTML page(s).')
+
 # Never publish obsolete non-UUID Cloud shells even if source ZIP overlays them.
 withheld = []
 for file in (TARGET / 'work').glob('*/index.html'):
@@ -47,7 +70,7 @@ for file in (TARGET / 'work').glob('*/index.html'):
 if withheld:
     print('AESH SAFETY: withheld', len(withheld),
           'unverified obsolete Cloud SEO shells from Pages artifact (source preserved).')
-# Only staged public HTML <head> is touched; authoring source files remain intact.
+# For social metadata, only staged HTML <head> is touched. Source files remain intact.
 # Keep a real share image for each public teacher/student, even where no
 # profile avatar exists. No body, canonical, sitemap, or Cloud media is changed.
 for kind, default in (('teacher', 'teachers'), ('student', 'students')):
